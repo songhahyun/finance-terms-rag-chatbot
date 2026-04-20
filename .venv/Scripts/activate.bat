@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=D:\AI\projects\llm-project\.venv
+set VIRTUAL_ENV=D:\AI\projects\finance-terms-rag-chatbot\.venv
 
 if not defined PROMPT set PROMPT=$P$G
 

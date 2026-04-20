@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+requests
+pandas
+tqdm
+pymupdf
+kiwipiepy
+langchain-core
+langchain-chroma
+langchain-community
+langchain-openai
+langchain-naver
+langchain-huggingface
+bert-score
+
