@@ -1,4 +1,4 @@
-fastapi
+﻿fastapi
 uvicorn
 requests
 pandas
@@ -12,4 +12,4 @@ langchain-openai
 langchain-naver
 langchain-huggingface
 bert-score
-
+python-dotenv
