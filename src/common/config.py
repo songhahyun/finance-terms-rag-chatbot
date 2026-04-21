@@ -1,8 +1,10 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 
 @dataclass(frozen=True)
@@ -23,10 +25,13 @@ class Settings:
 
 def get_settings() -> Settings:
     root = Path(__file__).resolve().parents[2]
+    load_dotenv(root / ".env")
+
     data_dir = root / "data"
     raw_dir = data_dir / "raw"
     processed_dir = data_dir / "processed"
     eval_dir = data_dir / "eval"
+    default_pdf_name = os.getenv("DEFAULT_PDF_FILENAME", "2026_경제금융용어 800선.pdf")
 
     return Settings(
         root_dir=root,
@@ -36,10 +41,9 @@ def get_settings() -> Settings:
         chroma_openai_dir=root / "chroma_openai",
         chroma_clova_dir=root / "chroma_clova",
         chroma_local_dir=root / "chroma_local",
-        default_pdf_path=raw_dir / "2020_경제금융용어 700선_게시.pdf",
+        default_pdf_path=raw_dir / default_pdf_name,
         default_chunk_json_path=processed_dir / "final_chunk.json",
         default_eval_csv_path=eval_dir / "golden_testset.csv",
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        ollama_model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
+        ollama_model=os.getenv("OLLAMA_MODEL", "deepseek-r1:7b"),
     )
-
