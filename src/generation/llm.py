@@ -4,8 +4,8 @@ from src.common.ollama_client import OllamaClient
 
 
 class OllamaGenerator:
-    def __init__(self, model: str, base_url: str) -> None:
-        self.client = OllamaClient(model=model, base_url=base_url)
+    def __init__(self, model: str, base_url: str, timeout: int = 300) -> None:
+        self.client = OllamaClient(model=model, base_url=base_url, timeout=timeout)
 
     def generate(self, prompt: str) -> str:
         return self.client.generate(prompt)
@@ -20,4 +20,3 @@ class LangChainGenerator:
     def generate(self, prompt: str) -> str:
         response = self.llm.invoke(prompt)
         return response.content if hasattr(response, "content") else str(response)
-

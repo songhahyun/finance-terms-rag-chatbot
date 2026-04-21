@@ -26,6 +26,7 @@ def run_evaluation(
     retrieval_mode: str = "hybrid",
     ollama_model: str | None = None,
     ollama_base_url: str | None = None,
+    ollama_timeout: int | None = None,
     dense_provider: str = "clova",
     dense_model_name: str = "bge-m3",
     dense_collection_name: str = "docs_clova",
@@ -45,6 +46,7 @@ def run_evaluation(
     generator = OllamaGenerator(
         model=ollama_model or settings.ollama_model,
         base_url=ollama_base_url or settings.ollama_base_url,
+        timeout=ollama_timeout or settings.ollama_timeout,
     )
     rag = RAGPipeline(retriever=retriever, generator=generator)
 
@@ -85,4 +87,3 @@ def run_evaluation(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_df.to_csv(output_path, index=False, encoding="utf-8-sig")
     return result_df
-

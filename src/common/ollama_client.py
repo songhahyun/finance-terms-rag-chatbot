@@ -4,9 +4,10 @@ import requests
 
 
 class OllamaClient:
-    def __init__(self, model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434") -> None:
+    def __init__(self, model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434", timeout: int = 300) -> None:
         self.model = model
         self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
 
     def generate(self, prompt: str, *, num_predict: int = 500) -> str:
         url = f"{self.base_url}/api/generate"
@@ -16,7 +17,7 @@ class OllamaClient:
             "stream": False,
             "options": {"num_predict": num_predict},
         }
-        response = requests.post(url, json=payload, timeout=180)
+        response = requests.post(url, json=payload, timeout=self.timeout)
         response.raise_for_status()
         return response.json().get("response", "").strip()
 
@@ -28,7 +29,6 @@ class OllamaClient:
             "stream": False,
             "options": {"num_predict": num_predict},
         }
-        response = requests.post(url, json=payload, timeout=180)
+        response = requests.post(url, json=payload, timeout=self.timeout)
         response.raise_for_status()
         return response.json()["message"]["content"].strip()
-

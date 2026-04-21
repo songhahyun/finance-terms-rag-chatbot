@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from langchain_chroma import Chroma
@@ -18,7 +19,9 @@ def create_embedding_model(provider: str, model_name: str):
     if provider == "local":
         from langchain_huggingface import HuggingFaceEmbeddings  # noqa: PLC0415
 
-        return HuggingFaceEmbeddings(model_name=model_name)
+        token = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN")
+        model_kwargs = {"token": token} if token else None
+        return HuggingFaceEmbeddings(model_name=model_name, model_kwargs=model_kwargs)
     raise ValueError(f"지원하지 않는 provider: {provider}")
 
 
@@ -34,4 +37,3 @@ def create_chroma_store(
         embedding_function=embedding_function,
         persist_directory=str(persist_directory),
     )
-

@@ -39,7 +39,11 @@ def create_app() -> FastAPI:
             chunk_json_path=str(settings.default_chunk_json_path),
             k=k,
         )
-        generator = OllamaGenerator(model=settings.ollama_model, base_url=settings.ollama_base_url)
+        generator = OllamaGenerator(
+            model=settings.ollama_model,
+            base_url=settings.ollama_base_url,
+            timeout=settings.ollama_timeout,
+        )
         pipeline = RAGPipeline(retriever, generator)
         state["pipelines"][key] = pipeline
         return pipeline

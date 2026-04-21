@@ -21,6 +21,7 @@ class Settings:
     default_eval_csv_path: Path
     ollama_base_url: str
     ollama_model: str
+    ollama_timeout: int
 
 
 def get_settings() -> Settings:
@@ -31,7 +32,7 @@ def get_settings() -> Settings:
     raw_dir = data_dir / "raw"
     processed_dir = data_dir / "processed"
     eval_dir = data_dir / "eval"
-    default_pdf_name = os.getenv("DEFAULT_PDF_FILENAME", "2026_경제금융용어 800선.pdf")
+    default_pdf_name = os.getenv("DEFAULT_PDF_FILENAME", "2020_경제금융용어 700선.pdf")
 
     return Settings(
         root_dir=root,
@@ -46,4 +47,5 @@ def get_settings() -> Settings:
         default_eval_csv_path=eval_dir / "golden_testset.csv",
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         ollama_model=os.getenv("OLLAMA_MODEL", "deepseek-r1:7b"),
+        ollama_timeout=int(os.getenv("OLLAMA_TIMEOUT", "300")),
     )
