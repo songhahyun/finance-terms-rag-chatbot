@@ -18,7 +18,7 @@ pip install -r requirements.txt
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=deepseek-r1:7b
 OLLAMA_SMALL_MODEL=deepseek-r1:1.5b
-OLLAMA_COMPLEX_MODEL=phi-4
+OLLAMA_COMPLEX_MODEL=phi4
 OLLAMA_TIMEOUT=300
 ```
 
@@ -95,6 +95,28 @@ python -m src.evaluation --retrieval-mode hybrid
 }
 ```
 
+응답 예시:
+
+```json
+{
+  "question": "가산금리란 무엇인가요?",
+  "answer": "가산금리는 기준금리에 신용위험 등을 반영해 추가로 붙는 금리입니다.",
+  "retrieved_ids": ["econ_0009", "econ_0123", "econ_0311"],
+  "sources": [
+    {
+      "chunk_id": "econ_0009",
+      "source": "한국은행 2020_경제금융용어 700선.pdf",
+      "text": "가산금리: ... (문서 본문 일부)"
+    },
+    {
+      "chunk_id": "econ_0123",
+      "source": "한국은행 2020_경제금융용어 700선.pdf",
+      "text": "기준금리와 스프레드 관련 설명 ... (문서 본문 일부)"
+    }
+  ]
+}
+```
+
 ## 7) Multi-agent 질의 처리 흐름
 
 - Stage 1: 사용자 질의에서 키워드 추출 (`OLLAMA_SMALL_MODEL`)
@@ -111,25 +133,3 @@ python -m src.evaluation --retrieval-mode hybrid
 
 - `GET /monitor/summary`: stage별 `success_rate`, `avg_elapsed_sec`, `avg_throughput` 확인
 - `GET /monitor/recent`: 최근 trace의 stage 상세(`success`, `elapsed_sec`, `throughput`, `error`) 확인
-
-응답 예시:
-
-```json
-{
-  "question": "가산금리란 무엇인가요?",
-  "answer": "가산금리는 기준금리에 신용위험 등을 반영해 추가로 붙는 금리입니다.",
-  "retrieved_ids": ["econ_0009", "econ_0123", "econ_0311"],
-  "sources": [
-    {
-      "chunk_id": "econ_0009",
-      "source": "D:\\AI\\projects\\finance-terms-rag-chatbot\\data\\raw\\2020_경제금융용어 700선.pdf",
-      "text": "가산금리: ... (문서 본문 일부)"
-    },
-    {
-      "chunk_id": "econ_0123",
-      "source": "D:\\AI\\projects\\finance-terms-rag-chatbot\\data\\raw\\2020_경제금융용어 700선.pdf",
-      "text": "기준금리와 스프레드 관련 설명 ... (문서 본문 일부)"
-    }
-  ]
-}
-```
