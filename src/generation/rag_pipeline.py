@@ -9,10 +9,14 @@ class RAGPipeline:
         self.retriever = retriever
         self.generator = generator
 
-    def answer(self, query: str) -> dict:
+    def answer(self, query: str, language: str | None = None) -> dict:
         docs = self.retriever.invoke(query)
         context = build_context(docs)
         prompt = RAG_PROMPT.format(context=context, question=query)
+        if language == "ko":
+            prompt += "\n\nRespond in Korean."
+        elif language == "en":
+            prompt += "\n\nRespond in English."
         answer = self.generator.generate(prompt)
         return {
             "query": query,
@@ -20,4 +24,3 @@ class RAGPipeline:
             "retrieved_ids": [doc.metadata.get("chunk_id") for doc in docs],
             "contexts": docs,
         }
-

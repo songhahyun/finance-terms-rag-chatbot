@@ -13,12 +13,20 @@ class ChatRequest(BaseModel):
     question: str = Field(..., min_length=1)
     mode: str = Field(default="hybrid")
     k: int = Field(default=5, ge=1, le=20)
+    language: str = Field(default="ko", pattern="^(ko|en)$")
+
+
+class SourceItem(BaseModel):
+    chunk_id: str | None
+    source: str | None
+    text: str
 
 
 class ChatResponse(BaseModel):
     question: str
     answer: str
     retrieved_ids: list[str | None]
+    sources: list[SourceItem]
 
 
 def create_app() -> FastAPI:
@@ -55,11 +63,20 @@ def create_app() -> FastAPI:
     @app.post("/chat", response_model=ChatResponse)
     def chat(req: ChatRequest) -> ChatResponse:
         pipeline = get_pipeline(req.mode, req.k)
-        result = pipeline.answer(req.question)
+        result = pipeline.answer(req.question, language=req.language)
+        sources = [
+            SourceItem(
+                chunk_id=doc.metadata.get("chunk_id"),
+                source=doc.metadata.get("source"),
+                text=doc.page_content,
+            )
+            for doc in result["contexts"]
+        ]
         return ChatResponse(
             question=req.question,
             answer=result["answer"],
             retrieved_ids=result["retrieved_ids"],
+            sources=sources,
         )
 
     return app
