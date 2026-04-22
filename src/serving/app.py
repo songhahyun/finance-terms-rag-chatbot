@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from src.common.config import get_settings
 from src.generation.llm import OllamaGenerator
 from src.generation.rag_pipeline import RAGPipeline
+from src.monitor import PipelineMonitor
 from src.retrieval.factory import build_retriever
 
 
@@ -32,7 +33,13 @@ class ChatResponse(BaseModel):
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="Finance RAG Chatbot API", version="0.1.0")
-    state: dict = {"pipelines": {}}
+    state: dict = {
+        "pipelines": {},
+        "monitor": PipelineMonitor(
+            max_history=1000,
+            log_path=settings.monitor_stage_log_path,
+        ),
+    }
 
     def get_pipeline(mode: str, k: int) -> RAGPipeline:
         key = (mode, k)
@@ -47,18 +54,48 @@ def create_app() -> FastAPI:
             chunk_json_path=str(settings.default_chunk_json_path),
             k=k,
         )
-        generator = OllamaGenerator(
-            model=settings.ollama_model,
+        keyword_extractor = OllamaGenerator(
+            model=settings.ollama_small_model,
             base_url=settings.ollama_base_url,
             timeout=settings.ollama_timeout,
         )
-        pipeline = RAGPipeline(retriever, generator)
+        complexity_classifier = OllamaGenerator(
+            model=settings.ollama_small_model,
+            base_url=settings.ollama_base_url,
+            timeout=settings.ollama_timeout,
+        )
+        simple_generator = OllamaGenerator(
+            model=settings.ollama_small_model,
+            base_url=settings.ollama_base_url,
+            timeout=settings.ollama_timeout,
+        )
+        complex_generator = OllamaGenerator(
+            model=settings.ollama_complex_model,
+            base_url=settings.ollama_base_url,
+            timeout=settings.ollama_timeout,
+        )
+        pipeline = RAGPipeline(
+            retriever,
+            keyword_extractor=keyword_extractor,
+            complexity_classifier=complexity_classifier,
+            simple_generator=simple_generator,
+            complex_generator=complex_generator,
+            monitor=state["monitor"],
+        )
         state["pipelines"][key] = pipeline
         return pipeline
 
     @app.get("/health")
     def health() -> dict:
         return {"status": "ok"}
+
+    @app.get("/monitor/summary")
+    def monitor_summary() -> dict:
+        return state["monitor"].summary()
+
+    @app.get("/monitor/recent")
+    def monitor_recent(limit: int = 20) -> dict:
+        return {"items": state["monitor"].recent(limit=limit)}
 
     @app.post("/chat", response_model=ChatResponse)
     def chat(req: ChatRequest) -> ChatResponse:
