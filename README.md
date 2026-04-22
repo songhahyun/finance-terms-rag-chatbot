@@ -12,6 +12,19 @@ pip install -r requirements.txt
 
 환경변수는 루트의 `.env`를 사용합니다.
 
+주요 LLM 관련 환경변수:
+
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=deepseek-r1:7b
+OLLAMA_SMALL_MODEL=deepseek-r1:1.5b
+OLLAMA_COMPLEX_MODEL=phi-4
+OLLAMA_TIMEOUT=300
+```
+
+- `OLLAMA_SMALL_MODEL`: Stage 1(키워드 추출), Stage 2-b(질의 분류), Stage 3 단순 정의 답변
+- `OLLAMA_COMPLEX_MODEL`: Stage 3 복합 추론 답변
+
 ## 2) 백엔드 실행 (FastAPI)
 
 ```bash
@@ -21,6 +34,8 @@ uvicorn src.serving.app:app --reload --host 0.0.0.0 --port 8000
 기본 API 엔드포인트:
 - `GET /health`
 - `POST /chat`
+- `GET /monitor/summary`
+- `GET /monitor/recent?limit=20`
 
 ## 3) 프론트엔드 실행 (Streamlit)
 
@@ -79,6 +94,23 @@ python -m src.evaluation --retrieval-mode hybrid
   "language": "ko"
 }
 ```
+
+## 7) Multi-agent 질의 처리 흐름
+
+- Stage 1: 사용자 질의에서 키워드 추출 (`OLLAMA_SMALL_MODEL`)
+- Stage 2-a: 키워드 + 원문 질의 기반 Hybrid RAG 검색
+- Stage 2-b: 질의를 `simple_definition` / `complex_reasoning`으로 분류 (`OLLAMA_SMALL_MODEL`)
+- Stage 2-a, 2-b는 병렬 실행
+- Stage 3:
+  - `simple_definition` -> `OLLAMA_SMALL_MODEL`로 답변 생성
+  - `complex_reasoning` -> `OLLAMA_COMPLEX_MODEL`로 답변 생성
+
+## 8) Stage 모니터링
+
+`/chat` 호출 시 stage별 실행 지표가 서버 메모리에 누적됩니다.
+
+- `GET /monitor/summary`: stage별 `success_rate`, `avg_elapsed_sec`, `avg_throughput` 확인
+- `GET /monitor/recent`: 최근 trace의 stage 상세(`success`, `elapsed_sec`, `throughput`, `error`) 확인
 
 응답 예시:
 
