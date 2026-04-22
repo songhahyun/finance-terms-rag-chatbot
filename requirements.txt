@@ -11,5 +11,10 @@ langchain-community
 langchain-openai
 langchain-naver
 langchain-huggingface
+sentence-transformers
+rank_bm25
 bert-score
 python-dotenv
+ragas
+datasets
+streamlit
