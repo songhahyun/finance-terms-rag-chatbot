@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
 from typing import Any
 
 from src.generation.context import build_context
@@ -63,6 +64,7 @@ class RAGPipeline:
         simple_generator=None,
         complex_generator=None,
         monitor: PipelineMonitor | None = None,
+        monitor_stage3_timeout_sec: float | None = None,
     ) -> None:
         self.retriever = retriever
         self.generator = generator
@@ -71,6 +73,7 @@ class RAGPipeline:
         self.simple_generator = simple_generator
         self.complex_generator = complex_generator
         self.monitor = monitor
+        self.monitor_stage3_timeout_sec = monitor_stage3_timeout_sec
 
     @property
     def is_multi_agent_enabled(self) -> bool:
@@ -116,7 +119,19 @@ class RAGPipeline:
             prompt += "\n\nRespond in English."
         return prompt
 
-    def answer(self, query: str, language: str | None = None) -> dict:
+    @staticmethod
+    def _generate_text(generator, prompt: str, on_chunk: Callable[[str], None] | None = None) -> str:
+        if on_chunk is None:
+            return generator.generate(prompt)
+        return generator.generate(prompt, stream=True, on_chunk=on_chunk)
+
+    def answer(
+        self,
+        query: str,
+        language: str | None = None,
+        *,
+        on_chunk: Callable[[str], None] | None = None,
+    ) -> dict:
         trace = None
         if self.monitor is not None:
             trace = self.monitor.start_trace(
@@ -145,12 +160,13 @@ class RAGPipeline:
             if trace is not None:
                 answer = trace.run_stage(
                     "stage_3_answer_generation",
-                    lambda: self.generator.generate(prompt),
+                    lambda: self._generate_text(self.generator, prompt, on_chunk),
                     throughput_unit="chars/sec",
                     throughput_fn=lambda out: len(str(out)),
+                    timeout_sec=self.monitor_stage3_timeout_sec,
                 )
             else:
-                answer = self.generator.generate(prompt)
+                answer = self._generate_text(self.generator, prompt, on_chunk)
             result = {
                 "query": query,
                 "answer": answer,
@@ -206,23 +222,25 @@ class RAGPipeline:
             if trace is not None:
                 answer = trace.run_stage(
                     "stage_3_answer_generation_simple",
-                    lambda: self.simple_generator.generate(answer_prompt),
+                    lambda: self._generate_text(self.simple_generator, answer_prompt, on_chunk),
                     throughput_unit="chars/sec",
                     throughput_fn=lambda out: len(str(out)),
+                    timeout_sec=self.monitor_stage3_timeout_sec,
                 )
             else:
-                answer = self.simple_generator.generate(answer_prompt)
+                answer = self._generate_text(self.simple_generator, answer_prompt, on_chunk)
         else:
             router_target = "complex_generator"
             if trace is not None:
                 answer = trace.run_stage(
                     "stage_3_answer_generation_complex",
-                    lambda: self.complex_generator.generate(answer_prompt),
+                    lambda: self._generate_text(self.complex_generator, answer_prompt, on_chunk),
                     throughput_unit="chars/sec",
                     throughput_fn=lambda out: len(str(out)),
+                    timeout_sec=self.monitor_stage3_timeout_sec,
                 )
             else:
-                answer = self.complex_generator.generate(answer_prompt)
+                answer = self._generate_text(self.complex_generator, answer_prompt, on_chunk)
 
         result = {
             "query": query,

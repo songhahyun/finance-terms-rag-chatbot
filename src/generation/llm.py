@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from src.common.ollama_client import OllamaClient
 
 
@@ -7,7 +9,15 @@ class OllamaGenerator:
     def __init__(self, model: str, base_url: str, timeout: int = 300) -> None:
         self.client = OllamaClient(model=model, base_url=base_url, timeout=timeout)
 
-    def generate(self, prompt: str) -> str:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        stream: bool = False,
+        on_chunk: Callable[[str], None] | None = None,
+    ) -> str:
+        if stream:
+            return self.client.generate_stream(prompt, on_chunk=on_chunk)
         return self.client.generate(prompt)
 
 

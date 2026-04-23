@@ -41,6 +41,7 @@ class QueryTrace:
         *,
         throughput_unit: str = "units/sec",
         throughput_fn: Callable[[Any], float] | None = None,
+        timeout_sec: float | None = None,
     ) -> Any:
         started_ts = datetime.now(timezone.utc).isoformat()
         t0 = perf_counter()
@@ -64,6 +65,9 @@ class QueryTrace:
                 except Exception:  # noqa: BLE001
                     units = 0.0
             throughput = units / elapsed
+            if success and timeout_sec is not None and elapsed > timeout_sec:
+                success = False
+                error = f"TimeoutExceeded: elapsed_sec={elapsed:.3f} > timeout_sec={timeout_sec:.3f}"
             metric = StageMetric(
                 stage=stage,
                 success=success,
@@ -154,6 +158,16 @@ class PipelineMonitor:
             metric.error or "-",
         )
 
+    def _log_trace_started(self, trace: QueryTrace) -> None:
+        if self._logger is None:
+            return
+        self._logger.info(
+            "trace_id=%s event=query_received query=%r metadata=%s",
+            trace.trace_id,
+            trace.query,
+            trace.metadata,
+        )
+
     def start_trace(self, query: str, metadata: dict[str, Any] | None = None) -> QueryTrace:
         trace = QueryTrace(
             trace_id=str(uuid4()),
@@ -164,6 +178,7 @@ class PipelineMonitor:
         )
         with self._lock:
             self._history.append(trace)
+        self._log_trace_started(trace)
         return trace
 
     def recent(self, limit: int = 20) -> list[dict[str, Any]]:

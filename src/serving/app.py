@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
+from queue import Queue
+from threading import Thread
+
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from src.common.config import get_settings
@@ -81,6 +86,7 @@ def create_app() -> FastAPI:
             simple_generator=simple_generator,
             complex_generator=complex_generator,
             monitor=state["monitor"],
+            monitor_stage3_timeout_sec=settings.monitor_stage3_timeout_sec,
         )
         state["pipelines"][key] = pipeline
         return pipeline
@@ -115,6 +121,66 @@ def create_app() -> FastAPI:
             retrieved_ids=result["retrieved_ids"],
             sources=sources,
         )
+
+    @app.post("/chat/stream")
+    def chat_stream(req: ChatRequest) -> StreamingResponse:
+        pipeline = get_pipeline(req.mode, req.k)
+        queue: Queue[str | None] = Queue()
+        result_holder: dict = {}
+        error_holder: dict = {}
+
+        def _on_chunk(chunk: str) -> None:
+            queue.put(chunk)
+
+        def _worker() -> None:
+            try:
+                result_holder["result"] = pipeline.answer(
+                    req.question,
+                    language=req.language,
+                    on_chunk=_on_chunk,
+                )
+            except Exception as exc:  # noqa: BLE001
+                error_holder["error"] = f"{type(exc).__name__}: {exc}"
+            finally:
+                queue.put(None)
+
+        def _iter_chunks():
+            worker = Thread(target=_worker, daemon=True)
+            worker.start()
+            while True:
+                item = queue.get()
+                if item is None:
+                    break
+                yield json.dumps({"type": "token", "content": item}, ensure_ascii=False) + "\n"
+
+            if "error" in error_holder:
+                yield json.dumps({"type": "error", "message": error_holder["error"]}, ensure_ascii=False) + "\n"
+                return
+
+            result = result_holder["result"]
+            sources = [
+                {
+                    "chunk_id": doc.metadata.get("chunk_id"),
+                    "source": doc.metadata.get("source"),
+                    "text": doc.page_content,
+                }
+                for doc in result["contexts"]
+            ]
+            yield (
+                json.dumps(
+                    {
+                        "type": "final",
+                        "question": req.question,
+                        "answer": result.get("answer", ""),
+                        "retrieved_ids": result.get("retrieved_ids", []),
+                        "sources": sources,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+
+        return StreamingResponse(_iter_chunks(), media_type="application/x-ndjson")
 
     return app
 

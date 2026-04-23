@@ -25,6 +25,7 @@ class Settings:
     ollama_complex_model: str
     ollama_timeout: int
     monitor_stage_log_path: Path
+    monitor_stage3_timeout_sec: float
 
 
 def get_settings() -> Settings:
@@ -51,9 +52,10 @@ def get_settings() -> Settings:
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         ollama_model=os.getenv("OLLAMA_MODEL", "deepseek-r1:7b"),
         ollama_small_model=os.getenv("OLLAMA_SMALL_MODEL", "deepseek-r1:1.5b"),
-        ollama_complex_model=os.getenv("OLLAMA_COMPLEX_MODEL", "phi4"),
+        ollama_complex_model=os.getenv("OLLAMA_COMPLEX_MODEL", "llama3.2:3b"),
         ollama_timeout=int(os.getenv("OLLAMA_TIMEOUT", "300")),
         monitor_stage_log_path=Path(
             os.getenv("MONITOR_STAGE_LOG_PATH", str(root / "logs" / "stage_monitor.log"))
         ),
+        monitor_stage3_timeout_sec=float(os.getenv("MONITOR_STAGE3_TIMEOUT_SEC", "120")),
     )

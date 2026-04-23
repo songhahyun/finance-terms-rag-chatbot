@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -15,6 +16,27 @@ def _post_chat(api_url: str, question: str, mode: str, k: int, language: str, ti
     )
     resp.raise_for_status()
     return resp.json()
+
+
+def _stream_chat(
+    api_url: str,
+    question: str,
+    mode: str,
+    k: int,
+    language: str,
+    timeout_sec: int,
+):
+    with requests.post(
+        api_url,
+        json={"question": question, "mode": mode, "k": k, "language": language},
+        timeout=timeout_sec,
+        stream=True,
+    ) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines(decode_unicode=True):
+            if not line:
+                continue
+            yield json.loads(line)
 
 
 def _init_state() -> None:
@@ -46,7 +68,7 @@ def _render_history() -> None:
 def main() -> None:
     st.set_page_config(page_title="Finance Terms RAG Chat", page_icon="F", layout="wide")
     st.title("Finance Terms RAG Chat")
-    st.caption("Streamlit frontend connected to FastAPI `/chat` endpoint")
+    st.caption("Streamlit frontend connected to FastAPI `/chat` and `/chat/stream` endpoints")
 
     _init_state()
 
@@ -67,6 +89,7 @@ def main() -> None:
             st.rerun()
 
     api_url = f"{backend_base_url}/chat"
+    stream_api_url = f"{backend_base_url}/chat/stream"
     _render_history()
 
     prompt = st.chat_input("Type your question")
@@ -80,13 +103,31 @@ def main() -> None:
     with st.chat_message("assistant"):
         with st.spinner("Generating answer..."):
             try:
-                result = _post_chat(api_url, prompt, mode, int(k), language, int(timeout_sec))
-                answer = result.get("answer", "")
-                sources = result.get("sources", [])
+                answer_placeholder = st.empty()
+                answer = ""
+                sources: list[dict[str, Any]] = []
+                for event in _stream_chat(stream_api_url, prompt, mode, int(k), language, int(timeout_sec)):
+                    event_type = str(event.get("type", ""))
+                    if event_type == "token":
+                        answer += str(event.get("content", ""))
+                        answer_placeholder.markdown(answer)
+                    elif event_type == "final":
+                        if not answer:
+                            answer = str(event.get("answer", ""))
+                            answer_placeholder.markdown(answer)
+                        sources = event.get("sources", []) or []
+                    elif event_type == "error":
+                        raise requests.RequestException(str(event.get("message", "unknown stream error")))
+                if not answer:
+                    # Fallback: if streaming payload was empty, try normal non-stream endpoint.
+                    result = _post_chat(api_url, prompt, mode, int(k), language, int(timeout_sec))
+                    answer = result.get("answer", "")
+                    sources = result.get("sources", [])
+                    answer_placeholder.markdown(answer)
             except requests.RequestException as exc:
                 answer = f"API request failed: {exc}"
                 sources = []
-            st.markdown(answer)
+                st.markdown(answer)
             _render_sources(sources)
 
     st.session_state.messages.append(
