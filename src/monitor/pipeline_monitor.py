@@ -43,6 +43,8 @@ class QueryTrace:
         throughput_fn: Callable[[Any], float] | None = None,
         timeout_sec: float | None = None,
     ) -> Any:
+        """Execute one pipeline stage while collecting timing metadata.
+        Record success, throughput, and timeout information for the trace."""
         started_ts = datetime.now(timezone.utc).isoformat()
         t0 = perf_counter()
         success = False
@@ -88,6 +90,8 @@ class QueryTrace:
                     pass
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize the trace into a JSON-friendly dictionary.
+        Include metadata and all collected stage metrics."""
         with self._lock:
             return {
                 "trace_id": self.trace_id,
@@ -100,12 +104,16 @@ class QueryTrace:
 
 class PipelineMonitor:
     def __init__(self, *, max_history: int = 500, log_path: str | Path | None = None) -> None:
+        """Initialize in-memory monitoring state and optional logging.
+        Keep a bounded history of recent query traces."""
         self._history: deque[QueryTrace] = deque(maxlen=max_history)
         self._lock = Lock()
         self._logger = self._build_logger(log_path)
 
     @staticmethod
     def _build_logger(log_path: str | Path | None) -> logging.Logger | None:
+        """Create or reuse a logger for pipeline monitoring output.
+        Attach file and console handlers only when needed."""
         if log_path is None:
             return None
 
@@ -144,6 +152,8 @@ class PipelineMonitor:
         return logger
 
     def _log_stage_metric(self, trace_id: str, metric: StageMetric) -> None:
+        """Write one stage metric to the configured logger.
+        Skip logging entirely when no logger has been configured."""
         if self._logger is None:
             return
         self._logger.info(
@@ -159,6 +169,8 @@ class PipelineMonitor:
         )
 
     def _log_trace_started(self, trace: QueryTrace) -> None:
+        """Log the start of a new traced query.
+        Record the query text and any attached metadata."""
         if self._logger is None:
             return
         self._logger.info(
@@ -169,6 +181,8 @@ class PipelineMonitor:
         )
 
     def start_trace(self, query: str, metadata: dict[str, Any] | None = None) -> QueryTrace:
+        """Create and register a new query trace object.
+        Add it to bounded history and emit an initial log entry."""
         trace = QueryTrace(
             trace_id=str(uuid4()),
             query=query,
@@ -182,11 +196,15 @@ class PipelineMonitor:
         return trace
 
     def recent(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Return recent traces in reverse chronological order.
+        Respect the requested limit while always returning a list."""
         with self._lock:
             traces = list(self._history)[-max(limit, 1) :]
         return [trace.to_dict() for trace in reversed(traces)]
 
     def summary(self) -> dict[str, Any]:
+        """Aggregate stage metrics across stored traces.
+        Compute counts, success rates, and average performance values."""
         grouped: dict[str, list[StageMetric]] = defaultdict(list)
         with self._lock:
             traces = list(self._history)

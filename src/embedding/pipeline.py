@@ -20,6 +20,8 @@ class EmbeddingTarget:
 
 
 def add_documents_in_batches(vectorstore, documents: list, *, batch_size: int = 100, sleep_sec: float = 0.5) -> None:
+    """Upload documents to the vector store in controlled batches.
+    Retry rate-limited requests and update progress as batches succeed."""
     all_ids = [doc.metadata["chunk_id"] for doc in documents]
     pbar = tqdm(total=len(documents), desc="임베딩 적재")
     for i in range(0, len(documents), batch_size):
@@ -48,6 +50,8 @@ def run_embedding(
     *,
     batch_size: int = 100,
 ) -> None:
+    """Build embeddings for all chunks across one or more targets.
+    Load chunk documents once, then populate each configured vector store."""
     chunks = load_chunks(chunk_json_path)
     docs = chunks_to_documents(chunks)
 
@@ -59,4 +63,3 @@ def run_embedding(
             embedding_function=embedding_fn,
         )
         add_documents_in_batches(vectorstore, docs, batch_size=batch_size, sleep_sec=target.sleep_sec)
-

@@ -16,6 +16,8 @@ def build_retriever(
     chunk_json_path: str | None = None,
     k: int = 5,
 ):
+    """Create the configured retriever implementation for the pipeline.
+    Support dense, BM25, and hybrid retrieval modes from one entry point."""
     settings = get_settings()
     dense_persist_directory = dense_persist_directory or str(settings.chroma_clova_dir)
     chunk_json_path = chunk_json_path or str(settings.default_chunk_json_path)
@@ -42,4 +44,3 @@ def build_retriever(
         bm25 = build_bm25_retriever(chunk_json_path=chunk_json_path, k=k)
         return HybridRetriever(dense, bm25, k=k)
     raise ValueError(f"지원하지 않는 mode: {mode}")
-

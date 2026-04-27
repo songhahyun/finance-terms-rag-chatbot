@@ -41,22 +41,30 @@ TRANS_TABLE = str.maketrans(SYMBOL_MAPPING)
 
 
 def drop_head_tail(chunks: list[dict], *, head: int = 5, tail: int = 1) -> list[dict]:
+    """Trim likely noise chunks from the beginning and end.
+    Leave the input unchanged when the list is too short to slice safely."""
     if len(chunks) <= head + tail:
         return chunks
     return chunks[head : len(chunks) - tail]
 
 
 def remove_terms(chunks: list[dict], terms: Iterable[str]) -> list[dict]:
+    """Filter out chunks whose term matches a blacklist entry.
+    Return only the records that should remain in the corpus."""
     blacklist = set(terms)
     return [chunk for chunk in chunks if chunk["용어"] not in blacklist]
 
 
 def find_duplicated_terms(chunks: list[dict]) -> list[str]:
+    """Find terms that appear more than once in the chunk list.
+    Return duplicate term labels for downstream data checks."""
     counts = Counter(chunk["용어"] for chunk in chunks)
     return [term for term, count in counts.items() if count > 1]
 
 
 def _space_with_kiwi(text: str) -> str:
+    """Apply Kiwi spacing correction when the library is installed.
+    Fall back to the original text if Kiwi is unavailable."""
     try:
         from kiwipiepy import Kiwi  # noqa: PLC0415
     except ImportError:
@@ -66,6 +74,8 @@ def _space_with_kiwi(text: str) -> str:
 
 
 def preprocess_chunk(chunk: dict, *, use_kiwi: bool = True) -> dict:
+    """Normalize one chunk description for cleaner retrieval text.
+    Fix symbol artifacts, whitespace, and optional spacing issues."""
     text = chunk.get("설명", "")
     if not text:
         return chunk
@@ -84,6 +94,8 @@ def preprocess_chunk(chunk: dict, *, use_kiwi: bool = True) -> dict:
 
 
 def add_chunk_ids(chunks: list[dict], *, prefix: str = "econ") -> list[dict]:
+    """Assign stable chunk ids and normalize metadata defaults.
+    Preserve existing chunk fields while adding sequential identifiers."""
     output = []
     for i, chunk in enumerate(chunks, start=1):
         chunk = dict(chunk)
@@ -94,4 +106,3 @@ def add_chunk_ids(chunks: list[dict], *, prefix: str = "econ") -> list[dict]:
         chunk["metadata"] = md
         output.append(chunk)
     return output
-

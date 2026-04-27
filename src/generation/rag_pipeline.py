@@ -17,6 +17,8 @@ from src.monitor import PipelineMonitor
 
 
 def _extract_json_object(raw_text: str) -> dict[str, Any]:
+    """Extract the first valid JSON object from model output.
+    Handle both clean JSON responses and noisy text-wrapped payloads."""
     text = raw_text.strip()
     try:
         loaded = json.loads(text)
@@ -35,6 +37,8 @@ def _extract_json_object(raw_text: str) -> dict[str, Any]:
 
 
 def _normalize_keywords(items: Any) -> list[str]:
+    """Normalize extracted keywords into a deduplicated list.
+    Keep insertion order and cap the result size at eight items."""
     if not isinstance(items, list):
         return []
     seen: set[str] = set()
@@ -66,6 +70,8 @@ class RAGPipeline:
         monitor: PipelineMonitor | None = None,
         monitor_stage3_timeout_sec: float | None = None,
     ) -> None:
+        """Initialize the RAG pipeline with retrieval, generation, and monitoring pieces.
+        Support either single-generator mode or routed multi-model mode."""
         self.retriever = retriever
         self.generator = generator
         self.keyword_extractor = keyword_extractor
@@ -77,6 +83,8 @@ class RAGPipeline:
 
     @property
     def is_multi_agent_enabled(self) -> bool:
+        """Check whether all routed-generation components are present.
+        Return true only when keyword, routing, and both generators exist."""
         return all(
             (
                 self.keyword_extractor is not None,
@@ -87,6 +95,8 @@ class RAGPipeline:
         )
 
     def _extract_keywords(self, query: str) -> list[str]:
+        """Generate retrieval keywords from the user query.
+        Return an empty list when no keyword extractor is configured."""
         if self.keyword_extractor is None:
             return []
         prompt = KEYWORD_EXTRACTION_PROMPT.format(question=query)
@@ -95,6 +105,8 @@ class RAGPipeline:
         return _normalize_keywords(payload.get("keywords"))
 
     def _classify_query(self, query: str) -> tuple[str, str]:
+        """Classify the query as simple or complex.
+        Return both the routing label and the model-provided reason."""
         if self.complexity_classifier is None:
             return "complex_reasoning", "default_fallback"
         prompt = QUERY_COMPLEXITY_PROMPT.format(question=query)
@@ -107,11 +119,15 @@ class RAGPipeline:
         return label, reason
 
     def _build_retrieval_query(self, query: str, keywords: list[str]) -> str:
+        """Augment the retrieval query with extracted keywords.
+        Fall back to the original query when no keywords are available."""
         if not keywords:
             return query
         return f"{query}\n\n[검색 키워드] " + ", ".join(keywords)
 
     def _build_answer_prompt(self, query: str, context: str, language: str | None = None) -> str:
+        """Construct the final generation prompt for the answer model.
+        Append a language instruction when the caller specifies one."""
         prompt = ROUTED_RAG_PROMPT.format(context=context, question=query)
         if language == "ko":
             prompt += "\n\nRespond in Korean."
@@ -121,6 +137,8 @@ class RAGPipeline:
 
     @staticmethod
     def _generate_text(generator, prompt: str, on_chunk: Callable[[str], None] | None = None) -> str:
+        """Run a prompt through the selected generator.
+        Use streaming only when a chunk callback has been provided."""
         if on_chunk is None:
             return generator.generate(prompt)
         return generator.generate(prompt, stream=True, on_chunk=on_chunk)
@@ -132,6 +150,8 @@ class RAGPipeline:
         *,
         on_chunk: Callable[[str], None] | None = None,
     ) -> dict:
+        """Answer a user query through the configured RAG flow.
+        Return the answer text, retrieved ids, contexts, and routing metadata."""
         trace = None
         if self.monitor is not None:
             trace = self.monitor.start_trace(

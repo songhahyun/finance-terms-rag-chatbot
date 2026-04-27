@@ -15,6 +15,8 @@ from src.retrieval.factory import build_retriever
 
 
 def _parse_id_list(raw_value: Any) -> list[str]:
+    """Normalize evaluation ids into a consistent string list.
+    Accept list objects, serialized lists, or scalar values."""
     if isinstance(raw_value, list):
         return [str(v) for v in raw_value]
     if isinstance(raw_value, str):
@@ -30,12 +32,16 @@ def _parse_id_list(raw_value: Any) -> list[str]:
 
 
 def _read_chunk_fields(item: dict[str, Any]) -> tuple[str, str]:
+    """Read term and description fields from a chunk record.
+    Support both Korean source keys and normalized English keys."""
     term = str(item.get("\uc6a9\uc5b4") or item.get("term") or "")
     description = str(item.get("\uc124\uba85") or item.get("description") or "")
     return term, description
 
 
 def _build_reference_lookup(chunk_json_path: str | Path) -> dict[str, str]:
+    """Build a chunk-id lookup for RAGAS ground-truth text.
+    Skip rows that do not provide a usable chunk identifier."""
     rows = load_json(chunk_json_path)
     lookup: dict[str, str] = {}
     for row in rows:
@@ -65,6 +71,8 @@ def run_ragas_evaluation(
     judge_model: str = "gpt-4o-mini",
     judge_embedding_model: str = "text-embedding-3-small",
 ) -> tuple[pd.DataFrame, dict[str, float]]:
+    """Run a RAGAS-based evaluation workflow on the test set.
+    Save detailed scores and return both row-level data and summary means."""
     try:
         from datasets import Dataset  # noqa: PLC0415
         from langchain_openai import ChatOpenAI, OpenAIEmbeddings  # noqa: PLC0415

@@ -9,6 +9,8 @@ import streamlit as st
 
 
 def _post_chat(api_url: str, question: str, mode: str, k: int, language: str, timeout_sec: int) -> dict[str, Any]:
+    """Send a standard chat request to the backend API.
+    Return the parsed JSON response for the current question."""
     resp = requests.post(
         api_url,
         json={"question": question, "mode": mode, "k": k, "language": language},
@@ -26,6 +28,8 @@ def _stream_chat(
     language: str,
     timeout_sec: int,
 ):
+    """Stream chat events from the backend endpoint.
+    Yield each decoded JSON event as it arrives."""
     with requests.post(
         api_url,
         json={"question": question, "mode": mode, "k": k, "language": language},
@@ -40,11 +44,15 @@ def _stream_chat(
 
 
 def _init_state() -> None:
+    """Initialize Streamlit session state for chat history.
+    Create the message list only when it is missing."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
 
 def _render_sources(sources: list[dict[str, Any]]) -> None:
+    """Render retrieved source snippets in an expandable panel.
+    Show chunk metadata and text for each cited result."""
     if not sources:
         return
     with st.expander("Sources"):
@@ -59,6 +67,8 @@ def _render_sources(sources: list[dict[str, Any]]) -> None:
 
 
 def _render_history() -> None:
+    """Replay prior chat messages from session state.
+    Render any attached source entries with each assistant turn."""
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -66,6 +76,8 @@ def _render_history() -> None:
 
 
 def main() -> None:
+    """Run the Streamlit chat application entry point.
+    Build the UI, handle user input, and display model responses."""
     st.set_page_config(page_title="Finance Terms RAG Chat", page_icon="F", layout="wide")
     st.title("Finance Terms RAG Chat")
     st.caption("Streamlit frontend connected to FastAPI `/chat` and `/chat/stream` endpoints")

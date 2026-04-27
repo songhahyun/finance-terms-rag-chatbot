@@ -15,6 +15,8 @@ def build_dense_retriever(
     fetch_k: int = 20,
     lambda_mult: float = 0.7,
 ):
+    """Build a dense retriever backed by a persisted Chroma collection.
+    Configure MMR search so retrieval balances relevance and diversity."""
     embedding_fn = create_embedding_model(provider, model_name)
     store = Chroma(
         collection_name=collection_name,
@@ -26,4 +28,3 @@ def build_dense_retriever(
         search_type="mmr",
         search_kwargs={"k": k, "fetch_k": fetch_k, "lambda_mult": lambda_mult},
     )
-

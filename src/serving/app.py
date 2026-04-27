@@ -36,6 +36,8 @@ class ChatResponse(BaseModel):
 
 
 def create_app() -> FastAPI:
+    """Create and configure the FastAPI application.
+    Wire health, monitoring, and chat endpoints around cached pipelines."""
     settings = get_settings()
     app = FastAPI(title="Finance RAG Chatbot API", version="0.1.0")
     state: dict = {
@@ -47,6 +49,8 @@ def create_app() -> FastAPI:
     }
 
     def get_pipeline(mode: str, k: int) -> RAGPipeline:
+        """Reuse or create a pipeline instance for the requested mode.
+        Cache pipelines by retrieval mode and top-k setting."""
         key = (mode, k)
         if key in state["pipelines"]:
             return state["pipelines"][key]
@@ -93,18 +97,26 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     def health() -> dict:
+        """Expose a lightweight health check endpoint.
+        Return a static status payload when the service is alive."""
         return {"status": "ok"}
 
     @app.get("/monitor/summary")
     def monitor_summary() -> dict:
+        """Return aggregated monitoring statistics for recent traces.
+        Summarize stage performance across stored requests."""
         return state["monitor"].summary()
 
     @app.get("/monitor/recent")
     def monitor_recent(limit: int = 20) -> dict:
+        """Return recent query traces for inspection.
+        Limit the number of monitoring records included in the response."""
         return {"items": state["monitor"].recent(limit=limit)}
 
     @app.post("/chat", response_model=ChatResponse)
     def chat(req: ChatRequest) -> ChatResponse:
+        """Handle a synchronous chat request.
+        Run the pipeline once and package retrieved sources for the client."""
         pipeline = get_pipeline(req.mode, req.k)
         result = pipeline.answer(req.question, language=req.language)
         sources = [
@@ -124,15 +136,21 @@ def create_app() -> FastAPI:
 
     @app.post("/chat/stream")
     def chat_stream(req: ChatRequest) -> StreamingResponse:
+        """Handle a streaming chat request over NDJSON.
+        Emit token events first and a final payload after generation completes."""
         pipeline = get_pipeline(req.mode, req.k)
         queue: Queue[str | None] = Queue()
         result_holder: dict = {}
         error_holder: dict = {}
 
         def _on_chunk(chunk: str) -> None:
+            """Forward each generated token chunk to the stream queue.
+            Keep streaming output decoupled from the worker thread."""
             queue.put(chunk)
 
         def _worker() -> None:
+            """Run pipeline generation in a background thread.
+            Capture either the final result or a serialized error message."""
             try:
                 result_holder["result"] = pipeline.answer(
                     req.question,
@@ -145,6 +163,8 @@ def create_app() -> FastAPI:
                 queue.put(None)
 
         def _iter_chunks():
+            """Yield streaming response packets to the client.
+            End with either an error event or the final answer payload."""
             worker = Thread(target=_worker, daemon=True)
             worker.start()
             while True:

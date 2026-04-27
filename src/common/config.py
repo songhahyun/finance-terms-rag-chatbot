@@ -29,6 +29,8 @@ class Settings:
 
 
 def get_settings() -> Settings:
+    """Load application settings from the project root and environment.
+    Build canonical paths and runtime defaults for the whole project."""
     root = Path(__file__).resolve().parents[2]
     load_dotenv(root / ".env")
 

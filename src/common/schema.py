@@ -18,6 +18,8 @@ class Chunk:
 
     @classmethod
     def from_dict(cls, item: dict[str, Any]) -> "Chunk":
+        """Build a Chunk instance from one raw JSON row.
+        Map source-specific field names into the normalized schema."""
         return cls(
             chunk_id=item["chunk_id"],
             term=item["용어"],
@@ -26,6 +28,8 @@ class Chunk:
         )
 
     def to_document(self) -> Document:
+        """Convert the chunk into a LangChain document.
+        Carry normalized metadata needed during retrieval and display."""
         source = self.metadata.get("source", "경제금융용어700선")
         page = self.metadata.get("page")
         content = f"{self.term}\n\n{self.description}".strip()
@@ -42,10 +46,13 @@ class Chunk:
 
 
 def load_chunks(path: str | Path) -> list[Chunk]:
+    """Load chunk records from JSON into typed Chunk objects.
+    Preserve file order while normalizing each row."""
     data = load_json(path)
     return [Chunk.from_dict(item) for item in data]
 
 
 def chunks_to_documents(chunks: list[Chunk]) -> list[Document]:
+    """Convert a list of chunks into LangChain documents.
+    Use each chunk's document serialization helper."""
     return [chunk.to_document() for chunk in chunks]
-
