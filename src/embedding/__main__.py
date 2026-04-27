@@ -7,6 +7,8 @@ from src.embedding.pipeline import EmbeddingTarget, run_embedding
 
 
 def main() -> None:
+    """Parse CLI arguments and run the embedding pipeline.
+    Build one or more vector stores from the chunk JSON file."""
     settings = get_settings()
     parser = argparse.ArgumentParser(description="JSON chunk를 벡터스토어에 임베딩")
     parser.add_argument("--chunk-json", default=str(settings.default_chunk_json_path))
@@ -49,4 +51,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

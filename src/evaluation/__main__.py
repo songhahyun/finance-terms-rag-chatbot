@@ -7,6 +7,8 @@ from src.evaluation.ragas_pipeline import run_ragas_evaluation
 
 
 def main() -> None:
+    """Parse CLI arguments and run the RAGAS evaluation entry point.
+    Print a compact summary after writing detailed outputs to disk."""
     settings = get_settings()
     parser = argparse.ArgumentParser(description="Run RAGAS evaluation pipeline")
     parser.add_argument("--eval-csv", default=str(settings.default_eval_csv_path))

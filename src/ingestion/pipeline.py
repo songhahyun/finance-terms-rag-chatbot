@@ -16,6 +16,8 @@ def run_ingestion(
     remove_noise_terms: list[str] | None = None,
     use_kiwi: bool = True,
 ) -> list[dict]:
+    """Run the PDF ingestion pipeline end to end.
+    Parse raw chunks, clean them, assign ids, and save the final JSON."""
     raw_chunks = parse_pdf_to_chunks(pdf_path)
     cleaned = drop_head_tail(raw_chunks, head=5, tail=1)
     if remove_noise_terms:
@@ -25,4 +27,3 @@ def run_ingestion(
     final_chunks = add_chunk_ids(processed)
     save_json(output_json_path, final_chunks, indent=2)
     return final_chunks
-

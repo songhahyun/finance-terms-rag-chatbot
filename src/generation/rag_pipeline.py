@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
 from typing import Any
 
 from src.generation.context import build_context
@@ -16,6 +17,8 @@ from src.monitor import PipelineMonitor
 
 
 def _extract_json_object(raw_text: str) -> dict[str, Any]:
+    """Extract the first valid JSON object from model output.
+    Handle both clean JSON responses and noisy text-wrapped payloads."""
     text = raw_text.strip()
     try:
         loaded = json.loads(text)
@@ -34,6 +37,8 @@ def _extract_json_object(raw_text: str) -> dict[str, Any]:
 
 
 def _normalize_keywords(items: Any) -> list[str]:
+    """Normalize extracted keywords into a deduplicated list.
+    Keep insertion order and cap the result size at eight items."""
     if not isinstance(items, list):
         return []
     seen: set[str] = set()
@@ -63,7 +68,10 @@ class RAGPipeline:
         simple_generator=None,
         complex_generator=None,
         monitor: PipelineMonitor | None = None,
+        monitor_stage3_timeout_sec: float | None = None,
     ) -> None:
+        """Initialize the RAG pipeline with retrieval, generation, and monitoring pieces.
+        Support either single-generator mode or routed multi-model mode."""
         self.retriever = retriever
         self.generator = generator
         self.keyword_extractor = keyword_extractor
@@ -71,9 +79,12 @@ class RAGPipeline:
         self.simple_generator = simple_generator
         self.complex_generator = complex_generator
         self.monitor = monitor
+        self.monitor_stage3_timeout_sec = monitor_stage3_timeout_sec
 
     @property
     def is_multi_agent_enabled(self) -> bool:
+        """Check whether all routed-generation components are present.
+        Return true only when keyword, routing, and both generators exist."""
         return all(
             (
                 self.keyword_extractor is not None,
@@ -84,6 +95,8 @@ class RAGPipeline:
         )
 
     def _extract_keywords(self, query: str) -> list[str]:
+        """Generate retrieval keywords from the user query.
+        Return an empty list when no keyword extractor is configured."""
         if self.keyword_extractor is None:
             return []
         prompt = KEYWORD_EXTRACTION_PROMPT.format(question=query)
@@ -92,6 +105,8 @@ class RAGPipeline:
         return _normalize_keywords(payload.get("keywords"))
 
     def _classify_query(self, query: str) -> tuple[str, str]:
+        """Classify the query as simple or complex.
+        Return both the routing label and the model-provided reason."""
         if self.complexity_classifier is None:
             return "complex_reasoning", "default_fallback"
         prompt = QUERY_COMPLEXITY_PROMPT.format(question=query)
@@ -104,11 +119,15 @@ class RAGPipeline:
         return label, reason
 
     def _build_retrieval_query(self, query: str, keywords: list[str]) -> str:
+        """Augment the retrieval query with extracted keywords.
+        Fall back to the original query when no keywords are available."""
         if not keywords:
             return query
         return f"{query}\n\n[검색 키워드] " + ", ".join(keywords)
 
     def _build_answer_prompt(self, query: str, context: str, language: str | None = None) -> str:
+        """Construct the final generation prompt for the answer model.
+        Append a language instruction when the caller specifies one."""
         prompt = ROUTED_RAG_PROMPT.format(context=context, question=query)
         if language == "ko":
             prompt += "\n\nRespond in Korean."
@@ -116,7 +135,23 @@ class RAGPipeline:
             prompt += "\n\nRespond in English."
         return prompt
 
-    def answer(self, query: str, language: str | None = None) -> dict:
+    @staticmethod
+    def _generate_text(generator, prompt: str, on_chunk: Callable[[str], None] | None = None) -> str:
+        """Run a prompt through the selected generator.
+        Use streaming only when a chunk callback has been provided."""
+        if on_chunk is None:
+            return generator.generate(prompt)
+        return generator.generate(prompt, stream=True, on_chunk=on_chunk)
+
+    def answer(
+        self,
+        query: str,
+        language: str | None = None,
+        *,
+        on_chunk: Callable[[str], None] | None = None,
+    ) -> dict:
+        """Answer a user query through the configured RAG flow.
+        Return the answer text, retrieved ids, contexts, and routing metadata."""
         trace = None
         if self.monitor is not None:
             trace = self.monitor.start_trace(
@@ -145,12 +180,13 @@ class RAGPipeline:
             if trace is not None:
                 answer = trace.run_stage(
                     "stage_3_answer_generation",
-                    lambda: self.generator.generate(prompt),
+                    lambda: self._generate_text(self.generator, prompt, on_chunk),
                     throughput_unit="chars/sec",
                     throughput_fn=lambda out: len(str(out)),
+                    timeout_sec=self.monitor_stage3_timeout_sec,
                 )
             else:
-                answer = self.generator.generate(prompt)
+                answer = self._generate_text(self.generator, prompt, on_chunk)
             result = {
                 "query": query,
                 "answer": answer,
@@ -206,23 +242,25 @@ class RAGPipeline:
             if trace is not None:
                 answer = trace.run_stage(
                     "stage_3_answer_generation_simple",
-                    lambda: self.simple_generator.generate(answer_prompt),
+                    lambda: self._generate_text(self.simple_generator, answer_prompt, on_chunk),
                     throughput_unit="chars/sec",
                     throughput_fn=lambda out: len(str(out)),
+                    timeout_sec=self.monitor_stage3_timeout_sec,
                 )
             else:
-                answer = self.simple_generator.generate(answer_prompt)
+                answer = self._generate_text(self.simple_generator, answer_prompt, on_chunk)
         else:
             router_target = "complex_generator"
             if trace is not None:
                 answer = trace.run_stage(
                     "stage_3_answer_generation_complex",
-                    lambda: self.complex_generator.generate(answer_prompt),
+                    lambda: self._generate_text(self.complex_generator, answer_prompt, on_chunk),
                     throughput_unit="chars/sec",
                     throughput_fn=lambda out: len(str(out)),
+                    timeout_sec=self.monitor_stage3_timeout_sec,
                 )
             else:
-                answer = self.complex_generator.generate(answer_prompt)
+                answer = self._generate_text(self.complex_generator, answer_prompt, on_chunk)
 
         result = {
             "query": query,

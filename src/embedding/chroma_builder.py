@@ -7,6 +7,8 @@ from langchain_chroma import Chroma
 
 
 def create_embedding_model(provider: str, model_name: str):
+    """Create an embedding client for the selected provider.
+    Dispatch to OpenAI, Clova, or local Hugging Face implementations."""
     provider = provider.lower()
     if provider == "openai":
         from langchain_openai import OpenAIEmbeddings  # noqa: PLC0415
@@ -31,6 +33,8 @@ def create_chroma_store(
     persist_directory: str | Path,
     embedding_function,
 ) -> Chroma:
+    """Create a Chroma vector store with cosine similarity metadata.
+    Return a ready-to-use store bound to the provided embedding function."""
     return Chroma(
         collection_name=collection_name,
         collection_metadata={"hnsw:space": "cosine"},

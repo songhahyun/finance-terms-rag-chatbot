@@ -7,6 +7,8 @@ from src.ingestion.pipeline import run_ingestion
 
 
 def main() -> None:
+    """Parse CLI arguments and run the ingestion pipeline.
+    Convert the source PDF into cleaned chunk JSON output."""
     settings = get_settings()
     parser = argparse.ArgumentParser(description="PDF를 파싱하여 청크 JSON 생성")
     parser.add_argument("--pdf-path", default=str(settings.default_pdf_path))
@@ -26,4 +28,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

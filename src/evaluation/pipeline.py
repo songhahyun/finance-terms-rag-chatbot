@@ -14,6 +14,8 @@ from src.retrieval.factory import build_retriever
 
 
 def _build_reference_lookup(chunk_json_path: str | Path) -> dict[str, str]:
+    """Build a lookup from chunk id to reference text.
+    Combine each term and description into one evaluation target."""
     chunks = load_chunks(chunk_json_path)
     return {chunk.chunk_id: f"{chunk.term}\n{chunk.description}" for chunk in chunks}
 
@@ -33,6 +35,8 @@ def run_evaluation(
     dense_persist_directory: str | None = None,
     k: int = 5,
 ) -> pd.DataFrame:
+    """Run retrieval-and-generation evaluation over a CSV dataset.
+    Save per-row metrics and return the aggregated result table."""
     settings = get_settings()
     retriever = build_retriever(
         mode=retrieval_mode,

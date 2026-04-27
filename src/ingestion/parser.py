@@ -14,6 +14,8 @@ def parse_pdf_to_chunks(
     footer_limit: int = 700,
     title_size_threshold: float = 11.0,
 ) -> list[dict]:
+    """Parse the source PDF into term-description chunks.
+    Detect titles, skip headers and footers, and capture related keywords."""
     doc = pymupdf.open(str(pdf_path))
     chunks: list[dict] = []
     current_chunk: dict | None = None
@@ -67,4 +69,3 @@ def parse_pdf_to_chunks(
         chunks.append(current_chunk)
 
     return chunks
-
