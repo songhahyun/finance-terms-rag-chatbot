@@ -28,8 +28,10 @@ OLLAMA_TIMEOUT=300
 ## 2) 백엔드 실행 (FastAPI)
 
 ```bash
-uvicorn src.serving.app:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+레거시 호환 경로인 `src.serving.app:app`도 유지되지만, 새 엔트리포인트는 `backend.app.main:app`입니다.
 
 기본 API 엔드포인트:
 - `GET /health`
@@ -40,7 +42,7 @@ uvicorn src.serving.app:app --reload --host 0.0.0.0 --port 8000
 ## 3) 프론트엔드 실행 (Streamlit)
 
 ```bash
-streamlit run src/app/streamlit_app.py
+streamlit run frontend/streamlit_app.py
 ```
 
 기본적으로 `http://localhost:8000/chat` 백엔드와 연동합니다.
@@ -54,11 +56,14 @@ finance-terms-rag-chatbot/
 │  ├─ processed/            # 전처리 결과 (예: final_chunk.json)
 │  └─ eval/                 # 평가 데이터셋 (예: golden_testset.csv)
 ├─ notebooks/               # 실험/분석 노트북
+├─ backend/
+│  └─ app/                  # FastAPI 전용 계층 (auth/JWT/RBAC/router/middleware/DB session)
+├─ frontend/
+│  └─ streamlit_app.py      # Streamlit 실행 엔트리포인트
 ├─ src/
-│  ├─ app/                  # Streamlit 프론트엔드
-│  │  └─ streamlit_app.py
-│  ├─ serving/              # FastAPI 서빙
-│  │  └─ app.py
+│  ├─ serving/              # FastAPI와 RAG 파이프라인 사이 어댑터
+│  │  ├─ app.py
+│  │  └─ rag_service.py
 │  ├─ ingestion/            # 데이터 파싱/정제
 │  ├─ embedding/            # 임베딩/벡터스토어 구축
 │  ├─ retrieval/            # BM25/Dense/Hybrid 검색기
@@ -115,6 +120,16 @@ python -m src.evaluation --retrieval-mode hybrid
     }
   ]
 }
+
+```
+인증을 켜려면 `.env` 또는 실행 환경에 아래 값을 추가할 수 있습니다.
+
+```env
+API_AUTH_REQUIRED=true
+API_JWT_SECRET=replace-this-secret
+API_ADMIN_USERNAME=admin
+API_ADMIN_PASSWORD=admin123
+API_ADMIN_ROLE=admin
 ```
 
 ## 7) Multi-agent 질의 처리 흐름
