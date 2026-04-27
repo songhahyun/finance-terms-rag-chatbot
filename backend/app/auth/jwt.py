@@ -10,15 +10,21 @@ from backend.app.config import get_backend_settings
 
 
 def _b64encode(payload: bytes) -> str:
+    """Encode raw bytes as URL-safe base64 without padding.
+    Produce compact JWT-friendly output."""
     return base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
 
 
 def _b64decode(payload: str) -> bytes:
+    """Decode a URL-safe base64 string with restored padding.
+    Support compact JWT segment parsing."""
     padding = "=" * (-len(payload) % 4)
     return base64.urlsafe_b64decode(payload + padding)
 
 
 def create_access_token(subject: str, roles: list[str]) -> str:
+    """Build a signed JWT access token for the given subject.
+    Embed role claims and an expiration timestamp."""
     settings = get_backend_settings()
     header = {"alg": settings.jwt_algorithm, "typ": "JWT"}
     expires_at = datetime.now(UTC) + timedelta(minutes=settings.jwt_exp_minutes)
@@ -39,6 +45,8 @@ def create_access_token(subject: str, roles: list[str]) -> str:
 
 
 def decode_access_token(token: str) -> dict:
+    """Validate and decode a signed JWT access token.
+    Raise ValueError when the token is malformed, invalid, or expired."""
     settings = get_backend_settings()
     try:
         header_part, body_part, signature_part = token.split(".")

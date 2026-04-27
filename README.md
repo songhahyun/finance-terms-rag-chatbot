@@ -15,10 +15,10 @@ pip install -r requirements.txt
 주요 LLM 관련 환경변수:
 
 ```env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=deepseek-r1:7b
-OLLAMA_SMALL_MODEL=deepseek-r1:1.5b
-OLLAMA_COMPLEX_MODEL=phi4
+OLLAMA_BASE_URL="http://localhost:11434"
+OLLAMA_MODEL="deepseek-r1:7b"
+OLLAMA_SMALL_MODEL="deepseek-r1:1.5b"
+OLLAMA_COMPLEX_MODEL="llama3.2:3b"
 OLLAMA_TIMEOUT=300
 ```
 
@@ -35,6 +35,8 @@ uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
 기본 API 엔드포인트:
 - `GET /health`
+- `POST /auth/login`
+- `POST /auth/signup`
 - `POST /chat`
 - `GET /monitor/summary`
 - `GET /monitor/recent?limit=20`
@@ -47,7 +49,84 @@ streamlit run frontend/streamlit_app.py
 
 기본적으로 `http://localhost:8000/chat` 백엔드와 연동합니다.
 
-## 4) 프로젝트 디렉토리 구조
+인증이 켜져 있으면 Streamlit은 로그인/회원가입 페이지를 먼저 표시합니다.
+- 로그인 또는 회원가입 전에는 Chat UI에 접근할 수 없습니다.
+- `Admin` 계정은 `Chat`과 `Monitoring` 탭을 모두 볼 수 있습니다. (ID: admin, PW: admin123)
+- `General User` 계정은 `Chat`만 볼 수 있고 `Monitoring`에는 접근할 수 없습니다.
+
+## 4) 인증 방식 (Admin, General User)
+```
+`.env` 파일에 아래 값을 추가할 경우 JWT 기반 인증 모듈이 활성화됩니다.
+
+```env
+API_AUTH_REQUIRED=true
+API_JWT_SECRET=user-generated-password
+API_JWT_ALGORITHM=HS256
+API_ADMIN_USERNAME=admin
+API_ADMIN_PASSWORD=admin123
+API_ADMIN_ROLE=admin
+```
+
+인증 동작:
+- `POST /auth/login`: 기존 사용자 로그인 후 bearer token 반환
+- `POST /auth/signup`: 새 사용자 생성 후 bearer token 반환
+- `/chat` 및 `/chat/stream`: 인증 필요
+- `/monitor/summary`, `/monitor/recent`: 인증 필요, `admin` 역할만 허용
+
+PowerShell에서 로그인 예시:
+
+```powershell
+$body = @{
+  username = "admin"
+  password = "admin123"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8000/auth/login" `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+회원가입 예시:
+
+```powershell
+$body = @{
+  username = "user1"
+  password = "pass1234"
+  role = "user"   # or "admin"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8000/auth/signup" `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+주의:
+- 현재 사용자 계정은 로컬 DB에 저장되지 않습니다.
+- 회원가입한 사용자는 백엔드 프로세스가 실행 중일 때만 메모리에 유지됩니다.
+- 백엔드 재시작 후에는 `.env`의 기본 admin 계정만 다시 생성됩니다.
+
+## 5) Multi-agent 질의 처리 흐름
+
+- Stage 1: 사용자 질의에서 키워드 추출 (`OLLAMA_SMALL_MODEL`)
+- Stage 2-a: 키워드 + 원문 질의 기반 Hybrid RAG 검색
+- Stage 2-b: 질의를 `simple_definition` / `complex_reasoning`으로 분류 (`OLLAMA_SMALL_MODEL`)
+- Stage 2-a, 2-b는 병렬 실행
+- Stage 3:
+  - `simple_definition` -> `OLLAMA_SMALL_MODEL`로 답변 생성
+  - `complex_reasoning` -> `OLLAMA_COMPLEX_MODEL`로 답변 생성
+
+## 6) Stage 모니터링 로그 (Admin 계정만 접근 가능)
+
+`/chat` 호출 시 stage별 실행 지표가 서버 메모리에 누적됩니다.
+
+- `GET /monitor/summary`: stage별 `success_rate`, `avg_elapsed_sec`, `avg_throughput` 확인
+- `GET /monitor/recent`: 최근 trace의 stage 상세(`success`, `elapsed_sec`, `throughput`, `error`) 확인
+
+## 7) 프로젝트 디렉토리 구조
 
 ```text
 finance-terms-rag-chatbot/
@@ -77,7 +156,7 @@ finance-terms-rag-chatbot/
 └─ README.md
 ```
 
-## 5) (선택) 평가 실행
+## 8) RAGAS 기반 Generation 평가 실행
 
 RAGAS 평가 파이프라인 실행:
 
@@ -85,7 +164,7 @@ RAGAS 평가 파이프라인 실행:
 python -m src.evaluation --retrieval-mode hybrid
 ```
 
-## 6) API 요청/응답 예시
+## 9) API 요청/응답 예시
 
 `POST /chat`
 
@@ -120,31 +199,3 @@ python -m src.evaluation --retrieval-mode hybrid
     }
   ]
 }
-
-```
-인증을 켜려면 `.env` 또는 실행 환경에 아래 값을 추가할 수 있습니다.
-
-```env
-API_AUTH_REQUIRED=true
-API_JWT_SECRET=replace-this-secret
-API_ADMIN_USERNAME=admin
-API_ADMIN_PASSWORD=admin123
-API_ADMIN_ROLE=admin
-```
-
-## 7) Multi-agent 질의 처리 흐름
-
-- Stage 1: 사용자 질의에서 키워드 추출 (`OLLAMA_SMALL_MODEL`)
-- Stage 2-a: 키워드 + 원문 질의 기반 Hybrid RAG 검색
-- Stage 2-b: 질의를 `simple_definition` / `complex_reasoning`으로 분류 (`OLLAMA_SMALL_MODEL`)
-- Stage 2-a, 2-b는 병렬 실행
-- Stage 3:
-  - `simple_definition` -> `OLLAMA_SMALL_MODEL`로 답변 생성
-  - `complex_reasoning` -> `OLLAMA_COMPLEX_MODEL`로 답변 생성
-
-## 8) Stage 모니터링
-
-`/chat` 호출 시 stage별 실행 지표가 서버 메모리에 누적됩니다.
-
-- `GET /monitor/summary`: stage별 `success_rate`, `avg_elapsed_sec`, `avg_throughput` 확인
-- `GET /monitor/recent`: 최근 trace의 stage 상세(`success`, `elapsed_sec`, `throughput`, `error`) 확인

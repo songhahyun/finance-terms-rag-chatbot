@@ -18,6 +18,8 @@ def chat(
     request: ChatRequest,
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> ChatResponse:
+    """Handle a synchronous chat request through the RAG service.
+    Return the serialized answer and source metadata."""
     result = answer_query(
         request.question,
         mode=request.mode,
@@ -32,6 +34,8 @@ def chat_stream(
     request: ChatRequest,
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> StreamingResponse:
+    """Handle a streaming chat request through the RAG service.
+    Emit NDJSON token events followed by a final payload."""
     queue, result_holder, error_holder = stream_answer(
         request.question,
         mode=request.mode,
@@ -40,6 +44,8 @@ def chat_stream(
     )
 
     def _iter_chunks():
+        """Yield streaming token, error, and final events in order.
+        Stop after the worker signals completion."""
         while True:
             item = queue.get()
             if item is None:

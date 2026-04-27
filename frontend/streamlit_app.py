@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import base64
 import json
 import os
 import re
@@ -24,12 +25,29 @@ STAGE_EVENT_RE = re.compile(
 )
 
 
-def _post_chat(api_url: str, question: str, mode: str, k: int, language: str, timeout_sec: int) -> dict[str, Any]:
+def _auth_headers(token: str | None) -> dict[str, str]:
+    """Build request headers for authenticated API calls.
+    Return an empty header set when no access token is available."""
+    if not token:
+        return {}
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _post_chat(
+    api_url: str,
+    question: str,
+    mode: str,
+    k: int,
+    language: str,
+    timeout_sec: int,
+    token: str | None,
+) -> dict[str, Any]:
     """Send a standard chat request to the backend API.
     Return the parsed JSON response for the current question."""
     resp = requests.post(
         api_url,
         json={"question": question, "mode": mode, "k": k, "language": language},
+        headers=_auth_headers(token),
         timeout=timeout_sec,
     )
     resp.raise_for_status()
@@ -43,12 +61,14 @@ def _stream_chat(
     k: int,
     language: str,
     timeout_sec: int,
+    token: str | None,
 ):
     """Stream chat events from the backend endpoint.
     Yield each decoded JSON event as it arrives."""
     with requests.post(
         api_url,
         json={"question": question, "mode": mode, "k": k, "language": language},
+        headers=_auth_headers(token),
         timeout=timeout_sec,
         stream=True,
     ) as resp:
@@ -60,10 +80,103 @@ def _stream_chat(
 
 
 def _init_state() -> None:
-    """Initialize Streamlit session state for chat history.
-    Create the message list only when it is missing."""
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    """Initialize Streamlit session state for auth and chat data.
+    Seed defaults only when the relevant keys are missing."""
+    defaults = {
+        "messages": [],
+        "access_token": "",
+        "auth_status": "Not signed in",
+        "current_page": "login",
+        "current_user": "",
+        "current_role": "",
+        "backend_base_url": os.getenv("CHAT_API_BASE_URL", "http://localhost:8000").rstrip("/"),
+    }
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+def _extract_error_message(exc: requests.RequestException) -> str:
+    """Extract a readable backend error message from a request exception.
+    Fall back to the exception string when no JSON detail is available."""
+    response = getattr(exc, "response", None)
+    if response is None:
+        return str(exc)
+    try:
+        payload = response.json()
+    except ValueError:
+        return str(exc)
+    detail = payload.get("detail")
+    return str(detail) if detail else str(exc)
+
+
+def _decode_token_claims(token: str) -> tuple[str, str]:
+    """Extract username and primary role from an access token payload.
+    Return empty values when the token cannot be decoded safely."""
+    try:
+        _, payload_part, _ = token.split(".")
+        padding = "=" * (-len(payload_part) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_part + padding).decode("utf-8"))
+    except (ValueError, json.JSONDecodeError):
+        return "", ""
+    username = str(payload.get("sub", "")).strip()
+    roles = payload.get("roles", [])
+    role = str(roles[0]).strip() if isinstance(roles, list) and roles else ""
+    return username, role
+
+
+def _login(api_base_url: str, username: str, password: str, timeout_sec: int) -> str:
+    """Authenticate against the backend login endpoint.
+    Return the issued access token on success."""
+    resp = requests.post(
+        f"{api_base_url}/auth/login",
+        json={"username": username, "password": password},
+        timeout=timeout_sec,
+    )
+    resp.raise_for_status()
+    payload = resp.json()
+    token = str(payload.get("access_token", "")).strip()
+    if not token:
+        raise requests.RequestException("Login response did not include an access token.")
+    return token
+
+
+def _signup(api_base_url: str, username: str, password: str, role: str, timeout_sec: int) -> str:
+    """Register a new account through the backend signup endpoint.
+    Return the issued access token for the created user."""
+    resp = requests.post(
+        f"{api_base_url}/auth/signup",
+        json={"username": username, "password": password, "role": role},
+        timeout=timeout_sec,
+    )
+    resp.raise_for_status()
+    payload = resp.json()
+    token = str(payload.get("access_token", "")).strip()
+    if not token:
+        raise requests.RequestException("Signup response did not include an access token.")
+    return token
+
+
+def _set_authenticated_session(token: str, username: str, role: str, status_message: str) -> None:
+    """Store authenticated user details in Streamlit session state.
+    Reset the page state so the main application becomes available."""
+    token_username, token_role = _decode_token_claims(token)
+    st.session_state.access_token = token
+    st.session_state.current_user = token_username or username
+    st.session_state.current_role = token_role or role
+    st.session_state.auth_status = status_message
+    st.session_state.current_page = "app"
+
+
+def _sign_out() -> None:
+    """Clear the current authenticated session from Streamlit state.
+    Return the UI to the login screen and drop prior chat history."""
+    st.session_state.access_token = ""
+    st.session_state.current_user = ""
+    st.session_state.current_role = ""
+    st.session_state.auth_status = "Signed out"
+    st.session_state.current_page = "login"
+    st.session_state.messages = []
 
 
 def _render_sources(sources: list[dict[str, Any]]) -> None:
@@ -465,20 +578,28 @@ def _render_monitoring_tab() -> None:
     _render_recent_stage_logs(filtered_stages)
 
 
-def _render_chat_tab() -> None:
-    """Render the existing chat interface."""
+def _render_chat_workspace() -> None:
+    """Render the authenticated chat workspace and sidebar controls.
+    Send bearer-authenticated requests to the backend API."""
     st.subheader("Chat")
-    st.caption("Streamlit frontend connected to FastAPI `/chat` and `/chat/stream` endpoints")
-
-    _init_state()
+    st.caption("Authenticated Streamlit frontend connected to FastAPI `/chat` and `/chat/stream` endpoints")
 
     with st.sidebar:
-        st.subheader("Chat Settings")
+        st.subheader("Session")
         backend_base_url = st.text_input(
             "Backend base URL",
-            value=os.getenv("CHAT_API_BASE_URL", "http://localhost:8000"),
+            value=st.session_state.backend_base_url,
             help="FastAPI server URL",
         ).strip().rstrip("/")
+        st.session_state.backend_base_url = backend_base_url
+        st.caption(f"Signed in as `{st.session_state.current_user}` ({st.session_state.current_role})")
+        st.caption(f"Status: {st.session_state.auth_status}")
+        if st.button("Sign out", use_container_width=True):
+            _sign_out()
+            st.rerun()
+
+        st.divider()
+        st.subheader("Chat Settings")
         mode = st.selectbox("Retrieval mode", options=["hybrid", "dense", "bm25"], index=0)
         language_label = st.selectbox("Answer language", options=["Korean", "English"], index=0)
         language = "ko" if language_label == "Korean" else "en"
@@ -488,8 +609,8 @@ def _render_chat_tab() -> None:
             st.session_state.messages = []
             st.rerun()
 
-    api_url = f"{backend_base_url}/chat"
-    stream_api_url = f"{backend_base_url}/chat/stream"
+    api_url = f"{st.session_state.backend_base_url}/chat"
+    stream_api_url = f"{st.session_state.backend_base_url}/chat/stream"
     _render_history()
 
     prompt = st.chat_input("Type your question")
@@ -506,7 +627,15 @@ def _render_chat_tab() -> None:
                 answer_placeholder = st.empty()
                 answer = ""
                 sources: list[dict[str, Any]] = []
-                for event in _stream_chat(stream_api_url, prompt, mode, int(k), language, int(timeout_sec)):
+                for event in _stream_chat(
+                    stream_api_url,
+                    prompt,
+                    mode,
+                    int(k),
+                    language,
+                    int(timeout_sec),
+                    st.session_state.access_token,
+                ):
                     event_type = str(event.get("type", ""))
                     if event_type == "token":
                         answer += str(event.get("content", ""))
@@ -519,12 +648,20 @@ def _render_chat_tab() -> None:
                     elif event_type == "error":
                         raise requests.RequestException(str(event.get("message", "unknown stream error")))
                 if not answer:
-                    result = _post_chat(api_url, prompt, mode, int(k), language, int(timeout_sec))
+                    result = _post_chat(
+                        api_url,
+                        prompt,
+                        mode,
+                        int(k),
+                        language,
+                        int(timeout_sec),
+                        st.session_state.access_token,
+                    )
                     answer = result.get("answer", "")
                     sources = result.get("sources", [])
                     answer_placeholder.markdown(answer)
             except requests.RequestException as exc:
-                answer = f"API request failed: {exc}"
+                answer = f"API request failed: {_extract_error_message(exc)}"
                 sources = []
                 st.markdown(answer)
             _render_sources(sources)
@@ -538,16 +675,91 @@ def _render_chat_tab() -> None:
     )
 
 
-def main() -> None:
-    """Run the Streamlit application entry point."""
-    st.set_page_config(page_title="Finance Terms RAG Chat", page_icon="F", layout="wide")
-    st.title("Finance Terms RAG Chat")
+def _render_login_page() -> None:
+    """Render the login page for existing users.
+    Block access to the main app until authentication succeeds."""
+    st.subheader("Login")
+    st.caption("Sign in to access the chat and monitoring workspace.")
+    st.session_state.backend_base_url = st.text_input(
+        "Backend base URL",
+        value=st.session_state.backend_base_url,
+        help="FastAPI server URL",
+    ).strip().rstrip("/")
+    username = st.text_input("Username", value=os.getenv("API_ADMIN_USERNAME", "admin"), key="login_username").strip()
+    password = st.text_input("Password", type="password", key="login_password")
 
-    chat_tab, monitor_tab = st.tabs(["Chat", "Monitoring"])
-    with chat_tab:
-        _render_chat_tab()
-    with monitor_tab:
-        _render_monitoring_tab()
+    action_cols = st.columns(2)
+    if action_cols[0].button("Login", use_container_width=True):
+        try:
+            token = _login(st.session_state.backend_base_url, username, password, timeout_sec=30)
+            _set_authenticated_session(token, username, "", "Signed in")
+            st.rerun()
+        except requests.RequestException as exc:
+            st.error(f"Login failed: {_extract_error_message(exc)}")
+    if action_cols[1].button("Go to Sign Up", use_container_width=True):
+        st.session_state.current_page = "signup"
+        st.rerun()
+
+
+def _render_signup_page() -> None:
+    """Render the sign-up page for new users.
+    Create either an admin or general user account and sign in immediately."""
+    st.subheader("Sign Up")
+    st.caption("Create an account before entering the chat workspace.")
+    st.session_state.backend_base_url = st.text_input(
+        "Backend base URL",
+        value=st.session_state.backend_base_url,
+        help="FastAPI server URL",
+        key="signup_backend_base_url",
+    ).strip().rstrip("/")
+    username = st.text_input("New username", key="signup_username").strip()
+    password = st.text_input("New password", type="password", key="signup_password")
+    role_label = st.selectbox("Account type", options=["General User", "Admin"], index=0)
+    role = "admin" if role_label == "Admin" else "user"
+
+    action_cols = st.columns(2)
+    if action_cols[0].button("Create Account", use_container_width=True):
+        try:
+            token = _signup(st.session_state.backend_base_url, username, password, role, timeout_sec=30)
+            _set_authenticated_session(token, username, role, "Signed up and signed in")
+            st.rerun()
+        except requests.RequestException as exc:
+            st.error(f"Sign-up failed: {_extract_error_message(exc)}")
+    if action_cols[1].button("Back to Login", use_container_width=True):
+        st.session_state.current_page = "login"
+        st.rerun()
+
+
+def _render_authenticated_app() -> None:
+    """Render the main application for authenticated users only.
+    Show chat and monitoring tabs after login or signup."""
+    st.title("Finance Terms RAG Chat")
+    if st.session_state.current_role == "admin":
+        chat_tab, monitor_tab = st.tabs(["Chat", "Monitoring"])
+        with chat_tab:
+            _render_chat_workspace()
+        with monitor_tab:
+            _render_monitoring_tab()
+        return
+
+    _render_chat_workspace()
+
+
+def main() -> None:
+    """Run the Streamlit application entry point.
+    Gate the main UI behind dedicated login and sign-up pages."""
+    st.set_page_config(page_title="Finance Terms RAG Chat", page_icon="F", layout="wide")
+    _init_state()
+
+    if not st.session_state.access_token:
+        st.title("Finance Terms RAG Access")
+        if st.session_state.current_page == "signup":
+            _render_signup_page()
+        else:
+            _render_login_page()
+        return
+
+    _render_authenticated_app()
 
 
 if __name__ == "__main__":
