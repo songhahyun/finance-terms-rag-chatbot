@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import requests
 import streamlit as st
@@ -9,26 +10,14 @@ from frontend.api_client import extract_error_message, login, signup
 from frontend.state import set_authenticated_session
 from frontend.styles import brand_html
 
+ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
+
 
 def render_auth_art() -> None:
     """Render the finance illustration used on auth screens."""
-    st.markdown(
-        """
-        <div class="auth-art">
-            <div class="bank-illu" aria-hidden="true">
-                <div class="bank-plate"></div>
-                <div class="bank-roof"></div>
-                <div class="bank-house"></div>
-                <div class="bank-pillars"><span></span><span></span><span></span><span></span></div>
-                <div class="bank-chart"></div>
-                <div class="bank-card"></div>
-                <div class="bank-coin"></div>
-                <div class="bank-lens"></div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="auth-art-image">', unsafe_allow_html=True)
+    st.image(str(ASSET_DIR / "bank_icon.png"), use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def render_login_page() -> None:

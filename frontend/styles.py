@@ -158,6 +158,19 @@ def inject_app_styles() -> None:
             align-items: center;
             justify-content: center;
         }
+        .auth-bank-svg {
+            width: min(560px, 90%);
+            height: auto;
+            display: block;
+        }
+        .auth-art-image {
+            width: min(560px, 86%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 22px 28px rgba(37, 99, 235, 0.16));
+            margin-top: 200px;
+        }
         .bank-illu {
             width: min(470px, 82%);
             aspect-ratio: 1.2;
