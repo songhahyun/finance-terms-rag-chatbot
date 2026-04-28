@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-import os
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
-from frontend.monitoring import filter_queries_by_dates, format_percent, load_monitor_log, query_dashboard_rows
+from frontend.monitoring import (
+    configured_model_names,
+    filter_queries_by_dates,
+    format_percent,
+    load_monitor_log,
+    query_dashboard_rows,
+)
 
 
 def render_dashboard_page() -> None:
@@ -47,9 +52,7 @@ def _render_chat_log_tab(queries_df: pd.DataFrame, stages_df: pd.DataFrame) -> N
     filter_cols = st.columns([1.45, 1, 1, 1.6, 0.8])
     selected_dates = filter_cols[0].date_input("기간", value=default_range, label_visibility="collapsed")
     selected_status = filter_cols[1].selectbox("상태", ["전체 상태", "성공", "오류"], label_visibility="collapsed")
-    selected_model = filter_cols[2].selectbox(
-        "모델", ["전체 모델", os.getenv("OLLAMA_COMPLEX_MODEL", "gpt-4o-mini")], label_visibility="collapsed"
-    )
+    selected_model = filter_cols[2].selectbox("모델", ["전체 모델", *configured_model_names()], label_visibility="collapsed")
     search_text = filter_cols[3].text_input("검색", placeholder="질문 또는 세션ID 검색", label_visibility="collapsed")
 
     if isinstance(selected_dates, tuple):

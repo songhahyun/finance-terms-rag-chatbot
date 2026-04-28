@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import os
 import re
 from collections import defaultdict
 from datetime import date
@@ -10,6 +9,8 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
+
+from src.common.config import get_settings
 
 LOG_LINE_RE = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) \| "
@@ -144,6 +145,26 @@ def format_percent(value: float) -> str:
     return f"{value * 100:.1f}%"
 
 
+def configured_model_names() -> list[str]:
+    """Return configured Ollama generation model names without OpenAI fallbacks."""
+    settings = get_settings()
+    return list(dict.fromkeys([settings.ollama_small_model, settings.ollama_complex_model]))
+
+
+def infer_generation_model(trace_stages: pd.DataFrame) -> str:
+    """Infer the answer-generation model from monitored stage names."""
+    settings = get_settings()
+    if trace_stages.empty:
+        return settings.ollama_complex_model
+
+    stage_names = set(trace_stages["stage"].dropna().astype(str))
+    if "stage_3_answer_generation_simple" in stage_names:
+        return settings.ollama_small_model
+    if "stage_3_answer_generation_complex" in stage_names:
+        return settings.ollama_complex_model
+    return settings.ollama_complex_model
+
+
 def query_dashboard_rows(queries_df: pd.DataFrame, stages_df: pd.DataFrame) -> pd.DataFrame:
     """Build dashboard rows from parsed monitor traces."""
     columns = ["No.", "시간", "세션 ID", "질문", "모델", "상태", "응답 시간", "사용 문서 수", "사용 토큰", "작업"]
@@ -170,7 +191,7 @@ def query_dashboard_rows(queries_df: pd.DataFrame, stages_df: pd.DataFrame) -> p
                 "시간": time_label,
                 "세션 ID": trace_id,
                 "질문": str(row.get("query") or "-"),
-                "모델": os.getenv("OLLAMA_COMPLEX_MODEL", "gpt-4o-mini"),
+                "모델": infer_generation_model(trace_stages),
                 "상태": "성공" if success else "오류",
                 "응답 시간": f"{elapsed:.2f}초" if elapsed else "-",
                 "사용 문서 수": max(1, len(trace_stages)) if not trace_stages.empty else "-",

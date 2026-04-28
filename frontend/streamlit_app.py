@@ -24,7 +24,7 @@ def main() -> None:
     if not st.session_state.access_token:
         with st.container(border=True):
             st.markdown('<div class="auth-wrap-marker"></div>', unsafe_allow_html=True)
-            form_col, art_col = st.columns([0.52, 0.48], gap="small")
+            form_col, art_col = st.columns([0.84, 0.16], gap="small")
             with form_col:
                 if st.session_state.current_page == "signup":
                     render_signup_page()

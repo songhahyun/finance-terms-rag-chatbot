@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import base64
 import html
+from pathlib import Path
 from typing import Any
 
 import requests
 import streamlit as st
 
 from frontend.api_client import extract_error_message, post_chat, stream_chat
-from frontend.state import sign_out
+
+ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
 
 
 def render_sources(sources: list[dict[str, Any]]) -> None:
@@ -36,36 +39,33 @@ def render_history() -> None:
         role = message["role"]
         content = html.escape(str(message["content"])).replace("\n", "<br>")
         if role == "user":
-            st.markdown(
-                f'<div class="bubble-row user"><div class="chat-bubble user">{content}</div></div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(_user_bubble(content), unsafe_allow_html=True)
         else:
-            st.markdown(
-                f'<div class="bubble-row"><div class="bot-dot">F</div><div class="chat-bubble">{content}</div></div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown(_assistant_bubble(content, escaped=True), unsafe_allow_html=True)
             render_sources(message.get("sources") or [])
+            render_disclaimer()
 
 
 def render_chat_workspace() -> None:
     """Render the authenticated chat workspace."""
+    inject_chatbot_avatar_style()
     st.markdown('<div class="content-pad">', unsafe_allow_html=True)
-    header_cols = st.columns([1.8, 1, 1, 0.8, 0.65])
-    with header_cols[0]:
-        st.markdown('<p class="page-title">ELS 상품 설명해줘</p>', unsafe_allow_html=True)
-        st.markdown('<div class="page-subtitle">2024-05-27 14:30</div>', unsafe_allow_html=True)
-    with header_cols[1]:
-        mode = st.selectbox("검색 방식", options=["hybrid", "dense", "bm25"], index=0, label_visibility="collapsed")
-    with header_cols[2]:
-        language_label = st.selectbox("답변 언어", options=["Korean", "English"], index=0, label_visibility="collapsed")
-    with header_cols[3]:
-        k = st.number_input("Top-K", min_value=1, max_value=20, value=5, step=1, label_visibility="collapsed")
-    with header_cols[4]:
-        if st.button("로그아웃", use_container_width=True):
-            sign_out()
-            st.rerun()
+    st.markdown('<div class="chat-workspace-marker"></div>', unsafe_allow_html=True)
+    st.markdown(f'<p class="page-title">{_conversation_title()}</p>', unsafe_allow_html=True)
+    if st.session_state.messages:
+        st.markdown('<div class="page-subtitle">현재 세션 대화</div>', unsafe_allow_html=True)
 
+    st.markdown('<div class="chat-header-controls-marker"></div>', unsafe_allow_html=True)
+    header_cols = st.columns([1.15, 1.05, 1.05])
+    with header_cols[0]:
+        st.markdown('<div class="chat-control-marker mode"></div>', unsafe_allow_html=True)
+        mode = st.selectbox("검색 방식", options=["hybrid", "dense", "bm25"], index=0)
+    with header_cols[1]:
+        st.markdown('<div class="chat-control-marker language"></div>', unsafe_allow_html=True)
+        language_label = st.selectbox("언어", options=["Korean", "English"], index=0)
+    with header_cols[2]:
+        st.markdown('<div class="chat-control-marker topk"></div>', unsafe_allow_html=True)
+        k = st.number_input("검색 문서 개수", min_value=1, max_value=20, value=5, step=1)
     with st.expander("연결 설정", expanded=False):
         backend_base_url = st.text_input(
             "Backend base URL",
@@ -78,37 +78,28 @@ def render_chat_workspace() -> None:
     language = "ko" if language_label == "Korean" else "en"
     api_url = f"{st.session_state.backend_base_url}/chat"
     stream_api_url = f"{st.session_state.backend_base_url}/chat/stream"
-    if not st.session_state.messages:
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": "안녕하세요. 금융 용어와 상품 구조에 대해 질문해 주세요. 관련 문서를 검색해 근거와 함께 답변합니다.",
-                "sources": [],
-            }
-        )
 
-    st.markdown('<div class="chat-transcript">', unsafe_allow_html=True)
-    render_history()
-    st.markdown("</div>", unsafe_allow_html=True)
+    transcript_container = st.container()
+    input_container = st.container()
 
-    prompt = st.chat_input("메시지를 입력하세요...")
-    if not prompt:
-        st.markdown(
-            '<div class="disclaimer">본 답변은 참고용이며, 투자 권유가 아닙니다. 최종 투자 결정은 투자자 본인의 책임입니다.</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-        return
+    with input_container:
+        st.markdown('<div class="chat-input-anchor"></div>', unsafe_allow_html=True)
+        prompt = st.chat_input("메시지를 입력하세요...")
 
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.markdown(
-        f'<div class="bubble-row user"><div class="chat-bubble user">{html.escape(prompt)}</div></div>',
-        unsafe_allow_html=True,
-    )
+    if prompt:
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-    with st.spinner("답변을 생성하고 있습니다..."):
+    with transcript_container:
+        st.markdown('<div class="chat-transcript-marker"></div>', unsafe_allow_html=True)
+        render_history()
+
+        if not prompt:
+            st.markdown("</div>", unsafe_allow_html=True)
+            return
+
         try:
             answer_placeholder = st.empty()
+            answer_placeholder.markdown(_assistant_loading_bubble(), unsafe_allow_html=True)
             answer = ""
             sources: list[dict[str, Any]] = []
             for event in stream_chat(
@@ -142,14 +133,77 @@ def render_chat_workspace() -> None:
             st.error(answer)
         render_sources(sources)
 
-    st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
+        st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
+        render_disclaimer()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def _user_bubble(content: str) -> str:
+    avatar = html.escape(_user_avatar_letter())
+    return (
+        '<div class="bubble-row user">'
+        f'<div class="chat-bubble user">{content}</div>'
+        f'<div class="chat-avatar user">{avatar}</div>'
+        '</div>'
+    )
+
+
+def _assistant_bubble(answer: str, escaped: bool = False) -> str:
+    content = answer if escaped else html.escape(answer).replace("\n", "<br>")
+    return (
+        '<div class="bubble-row">'
+        '<div class="chat-avatar bot"></div>'
+        f'<div class="chat-bubble">{content}</div>'
+        '</div>'
+    )
+
+
+def _assistant_loading_bubble() -> str:
+    return (
+        '<div class="bubble-row">'
+        '<div class="chat-avatar bot"></div>'
+        '<div class="chat-bubble loading-dots"><span></span><span></span><span></span></div>'
+        '</div>'
+    )
+
+
+def _user_avatar_letter() -> str:
+    username = str(st.session_state.current_user or "U").strip()
+    return (username[:1] or "U").upper()
+
+
+def inject_chatbot_avatar_style() -> None:
+    image_src = _chatbot_icon_data_uri()
+    st.markdown(
+        f"""
+        <style>
+        .chat-avatar.bot {{
+            background-image: url("{image_src}");
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+@st.cache_data(show_spinner=False)
+def _chatbot_icon_data_uri() -> str:
+    image_bytes = (ASSET_DIR / "chatbot_icon.png").read_bytes()
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def render_disclaimer() -> None:
     st.markdown(
         '<div class="disclaimer">본 답변은 참고용이며, 투자 권유가 아닙니다. 최종 투자 결정은 투자자 본인의 책임입니다.</div>',
         unsafe_allow_html=True,
     )
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
-def _assistant_bubble(answer: str) -> str:
-    content = html.escape(answer).replace("\n", "<br>")
-    return f'<div class="bubble-row"><div class="bot-dot">F</div><div class="chat-bubble">{content}</div></div>'
+def _conversation_title() -> str:
+    for message in st.session_state.messages:
+        if message.get("role") == "user":
+            title = str(message.get("content", "")).strip()
+            if title:
+                return html.escape(title[:40])
+    return "새 대화"

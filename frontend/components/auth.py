@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import os
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -15,17 +17,25 @@ ASSET_DIR = Path(__file__).resolve().parents[1] / "assets"
 
 def render_auth_art() -> None:
     """Render the finance illustration used on auth screens."""
-    st.markdown('<div class="auth-art-image">', unsafe_allow_html=True)
-    st.image(str(ASSET_DIR / "bank_icon.png"), use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="auth-art"><div class="auth-art-image"><img src="{_bank_icon_data_uri()}" alt=""></div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+@st.cache_data(show_spinner=False)
+def _bank_icon_data_uri() -> str:
+    image_bytes = (ASSET_DIR / "bank_icon.png").read_bytes()
+    encoded = base64.b64encode(image_bytes).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
 
 
 def render_login_page() -> None:
     """Render the login page for existing users."""
-    st.markdown('<div class="auth-panel">', unsafe_allow_html=True)
+    st.markdown('<div class="auth-panel-marker"></div>', unsafe_allow_html=True)
     st.markdown(brand_html(), unsafe_allow_html=True)
     st.markdown(
-        '<div style="margin:14px 0 0 28px;color:#64748b;font-size:0.86rem;">금융 지식을 가장 빠르고 정확하게</div>',
+        '<div style="margin:14px 0 0 0;color:#64748b;font-size:1rem;">금융 지식을 가장 빠르고 정확하게</div>',
         unsafe_allow_html=True,
     )
     st.markdown('<div class="auth-title">로그인</div>', unsafe_allow_html=True)
@@ -45,13 +55,19 @@ def render_login_page() -> None:
     ).strip()
     password = st.text_input("비밀번호", type="password", key="login_password", placeholder="비밀번호를 입력하세요")
 
-    if st.button("로그인", use_container_width=True, type="primary"):
-        try:
-            token = login(st.session_state.backend_base_url, username, password, timeout_sec=30)
-            set_authenticated_session(token, username, "", "Signed in")
+    action_cols = st.columns([1, 1])
+    with action_cols[0]:
+        if st.button("로그인", use_container_width=True, type="primary"):
+            try:
+                token = login(st.session_state.backend_base_url, username, password, timeout_sec=30)
+                set_authenticated_session(token, username, "", "Signed in")
+                st.rerun()
+            except requests.RequestException as exc:
+                st.error(f"Login failed: {extract_error_message(exc)}")
+    with action_cols[1]:
+        if st.button("회원가입", use_container_width=True):
+            st.session_state.current_page = "signup"
             st.rerun()
-        except requests.RequestException as exc:
-            st.error(f"Login failed: {extract_error_message(exc)}")
 
     help_cols = st.columns([1, 1])
     with help_cols[0]:
@@ -61,19 +77,12 @@ def render_login_page() -> None:
             '<div style="text-align:right;padding-top:8px;color:#2563eb;font-size:0.85rem;">비밀번호 찾기</div>',
             unsafe_allow_html=True,
         )
-    if st.button("회원가입", use_container_width=True):
-        st.session_state.current_page = "signup"
-        st.rerun()
-    st.markdown(
-        '<div style="position:fixed;bottom:28px;color:#94a3b8;font-size:0.76rem;">© 2024 FinRAG Chatbot. All rights reserved.</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(_copyright_html(), unsafe_allow_html=True)
 
 
 def render_signup_page() -> None:
     """Render the sign-up page for new users."""
-    st.markdown('<div class="auth-panel">', unsafe_allow_html=True)
+    st.markdown('<div class="auth-panel-marker"></div>', unsafe_allow_html=True)
     st.markdown(brand_html(), unsafe_allow_html=True)
     st.markdown(
         '<div style="margin:14px 0 0 28px;color:#64748b;font-size:0.86rem;">금융 지식을 가장 빠르고 정확하게</div>',
@@ -104,4 +113,8 @@ def render_signup_page() -> None:
     if st.button("로그인으로 돌아가기", use_container_width=True):
         st.session_state.current_page = "login"
         st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def _copyright_html() -> str:
+    year = date.today().year
+    return f'<div class="auth-copyright">&copy; {year} FinRAG Chatbot. All rights reserved.</div>'
