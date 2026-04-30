@@ -37,3 +37,8 @@ Thumbs.db
 
 #notebook cache
 .ipynb_checkpoints/ 
+
+#node / frontend
+**/node_modules/
+frontend-web/dist/
+frontend-web/.vite/

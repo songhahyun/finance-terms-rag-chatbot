@@ -12,6 +12,8 @@ logger = logging.getLogger("backend.request")
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
+        """Log each request path, status code, and latency.
+        Wrap the downstream handler without changing the response."""
         started = perf_counter()
         response = await call_next(request)
         elapsed_ms = (perf_counter() - started) * 1000.0

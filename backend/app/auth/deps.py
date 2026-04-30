@@ -14,6 +14,8 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> AuthenticatedUser:
+    """Resolve the current API user from the bearer token.
+    Allow an anonymous guest only when auth is disabled."""
     settings = get_backend_settings()
     if credentials is None:
         if settings.auth_required:
