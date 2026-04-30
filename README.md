@@ -41,18 +41,20 @@ uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 - `GET /monitor/summary`
 - `GET /monitor/recent?limit=20`
 
-## 3) 프론트엔드 실행 (Streamlit)
+## 3) 프론트엔드 실행 (Vite + React + TypeScript)
 
 ```bash
-streamlit run frontend/streamlit_app.py
+cd frontend-web
+cp .env.example .env
+npm install
+npm run dev
 ```
 
-기본적으로 `http://localhost:8000/chat` 백엔드와 연동합니다.
+기본적으로 `VITE_API_BASE_URL=http://localhost:8000` 백엔드와 연동합니다.
 
-인증이 켜져 있으면 Streamlit은 로그인/회원가입 페이지를 먼저 표시합니다.
-- 로그인 또는 회원가입 전에는 Chat UI에 접근할 수 없습니다.
-- `Admin` 계정은 `Chat`과 `Monitoring` 탭을 모두 볼 수 있습니다. (ID: admin, PW: admin123)
-- `General User` 계정은 `Chat`만 볼 수 있고 `Monitoring`에는 접근할 수 없습니다.
+역할 기반 라우팅:
+- `user`: `/chat`만 접근 가능
+- `admin`: `/chat`, `/admin` 접근 가능
 
 ## 4) 인증 방식 (Admin, General User)
 ```
@@ -137,8 +139,7 @@ finance-terms-rag-chatbot/
 ├─ notebooks/               # 실험/분석 노트북
 ├─ backend/
 │  └─ app/                  # FastAPI 전용 계층 (auth/JWT/RBAC/router/middleware/DB session)
-├─ frontend/
-│  └─ streamlit_app.py      # Streamlit 실행 엔트리포인트
+├─ frontend-web/            # Vite + React + TypeScript 프론트엔드
 ├─ src/
 │  ├─ serving/              # FastAPI와 RAG 파이프라인 사이 어댑터
 │  │  ├─ app.py
