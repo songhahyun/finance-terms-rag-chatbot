@@ -7,7 +7,15 @@ from tqdm.auto import tqdm
 
 from src.common.config import get_settings
 from src.common.schema import load_chunks
-from src.evaluation.metrics import bertscore_f1, hit_score, parse_golden_ids, recall_score
+from src.evaluation.metrics import (
+    bertscore_f1,
+    hit_score,
+    measure_retrieval_latency,
+    mrr_score,
+    ndcg_score,
+    parse_golden_ids,
+    recall_score,
+)
 from src.generation.llm import OllamaGenerator
 from src.generation.rag_pipeline import RAGPipeline
 from src.retrieval.factory import build_retriever
@@ -63,7 +71,7 @@ def run_evaluation(
     for _, row in tqdm(df.iterrows(), total=len(df), desc="평가 실행"):
         query = row["query"]
         golden_ids = parse_golden_ids(row["chunk_id"])
-        result = rag.answer(query)
+        result, query_latency_sec = measure_retrieval_latency(rag.answer, query)
         retrieved_ids = result["retrieved_ids"]
         prediction = result["answer"]
         reference = "\n\n".join(ref_lookup.get(cid, "") for cid in golden_ids).strip()
@@ -75,6 +83,9 @@ def run_evaluation(
                 "retrieved_ids": retrieved_ids,
                 "hit": hit_score(retrieved_ids, golden_ids),
                 "recall": recall_score(retrieved_ids, golden_ids),
+                "mrr": mrr_score(retrieved_ids, golden_ids),
+                "ndcg": ndcg_score(retrieved_ids, golden_ids),
+                "query_latency_sec": query_latency_sec,
                 "answer": prediction,
                 "reference": reference,
             }
@@ -87,6 +98,8 @@ def run_evaluation(
         row["bert_score_f1"] = f1
 
     result_df = pd.DataFrame(rows)
+    avg_latency = float(result_df["query_latency_sec"].mean()) if not result_df.empty else 0.0
+    print(f"Average query latency (sec): {avg_latency:.4f}")
     output_path = Path(output_csv_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result_df.to_csv(output_path, index=False, encoding="utf-8-sig")

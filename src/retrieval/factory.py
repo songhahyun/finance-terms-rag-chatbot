@@ -23,6 +23,7 @@ def build_retriever(
     chunk_json_path = chunk_json_path or str(settings.default_chunk_json_path)
 
     mode = mode.lower()
+
     if mode == "dense":
         return build_dense_retriever(
             provider=dense_provider,
@@ -31,8 +32,13 @@ def build_retriever(
             persist_directory=dense_persist_directory,
             k=k,
         )
+    
     if mode == "bm25":
-        return build_bm25_retriever(chunk_json_path=chunk_json_path, k=k)
+        return build_bm25_retriever(
+            chunk_json_path=chunk_json_path,
+            k=k,
+        )
+    
     if mode == "hybrid":
         dense = build_dense_retriever(
             provider=dense_provider,
@@ -41,6 +47,9 @@ def build_retriever(
             persist_directory=dense_persist_directory,
             k=k,
         )
-        bm25 = build_bm25_retriever(chunk_json_path=chunk_json_path, k=k)
+        bm25 = build_bm25_retriever(
+            chunk_json_path=chunk_json_path,
+            k=k,
+        )
         return HybridRetriever(dense, bm25, k=k)
     raise ValueError(f"지원하지 않는 mode: {mode}")
