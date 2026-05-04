@@ -50,29 +50,6 @@ def mrr_score(retrieved_ids: Iterable[str], golden_ids: Iterable[str]) -> float:
     return 0.0
 
 
-def ndcg_score(retrieved_ids: Iterable[str], golden_ids: Iterable[str]) -> float:
-    """Compute nDCG for binary relevance over retrieved chunk ranking."""
-    retrieved = list(retrieved_ids)
-    golden = set(golden_ids)
-    if not golden or not retrieved:
-        return 0.0
-
-    dcg = 0.0
-    for idx, chunk_id in enumerate(retrieved):
-        rel = 1.0 if chunk_id in golden else 0.0
-        if rel:
-            dcg += rel / math.log2(idx + 2)
-
-    ideal_hits = min(len(golden), len(retrieved))
-    if ideal_hits == 0:
-        return 0.0
-
-    idcg = sum(1.0 / math.log2(i + 2) for i in range(ideal_hits))
-    if idcg == 0.0:
-        return 0.0
-    return dcg / idcg
-
-
 def measure_retrieval_latency(
     retrieve_fn: Callable[..., Any],
     *args,

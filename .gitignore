@@ -28,6 +28,11 @@ checkpoints/
 !/data/.gitkeep
 /datasets/
 
+# vector db
+chroma_clova/
+chroma_local/
+chroma_openai/
+
 #system files
 .DS_Store
 Thumbs.db

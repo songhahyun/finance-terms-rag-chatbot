@@ -5,6 +5,8 @@ from src.retrieval.bm25 import build_bm25_retriever
 from src.retrieval.dense import build_dense_retriever
 from src.retrieval.hybrid import HybridRetriever
 
+_LOCAL_HF_MODEL_NAME = "BAAI/bge-m3"
+
 
 def build_retriever(
     mode: str = "hybrid",
@@ -21,6 +23,8 @@ def build_retriever(
     settings = get_settings()
     dense_persist_directory = dense_persist_directory or str(settings.chroma_clova_dir)
     chunk_json_path = chunk_json_path or str(settings.default_chunk_json_path)
+    if dense_provider.lower() == "local":
+        dense_model_name = _LOCAL_HF_MODEL_NAME
 
     mode = mode.lower()
 
