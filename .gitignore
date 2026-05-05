@@ -23,11 +23,6 @@ checkpoints/
 *.pt
 .pth
 
-#data artifacts
-/data/
-!/data/.gitkeep
-/datasets/
-
 #system files
 .DS_Store
 Thumbs.db
