@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass
@@ -12,7 +12,8 @@ class Settings:
     root_dir: Path
     raw_data_dir: Path
     processed_data_dir: Path
-    eval_data_dir: Path
+    eval_input_dir: Path
+    eval_output_dir: Path
     chroma_openai_dir: Path
     chroma_clova_dir: Path
     chroma_local_dir: Path
@@ -37,20 +38,22 @@ def get_settings() -> Settings:
     data_dir = root / "data"
     raw_dir = data_dir / "raw"
     processed_dir = data_dir / "processed"
-    eval_dir = data_dir / "eval"
+    eval_input_dir = data_dir / "eval" / "testset"
+    eval_output_dir = data_dir / "eval" / "output"
     default_pdf_name = os.getenv("DEFAULT_PDF_FILENAME", "2020_경제금융용어 700선.pdf")
 
     return Settings(
         root_dir=root,
         raw_data_dir=raw_dir,
         processed_data_dir=processed_dir,
-        eval_data_dir=eval_dir,
+        eval_input_dir=eval_input_dir,
+        eval_output_dir=eval_output_dir,
         chroma_openai_dir=root / "chroma_openai",
         chroma_clova_dir=root / "chroma_clova",
         chroma_local_dir=root / "chroma_local",
         default_pdf_path=raw_dir / default_pdf_name,
         default_chunk_json_path=processed_dir / "final_chunk.json",
-        default_eval_csv_path=eval_dir / "golden_testset.csv",
+        default_eval_csv_path=eval_input_dir / "golden_testset_v2.csv",
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         ollama_model=os.getenv("OLLAMA_MODEL", "deepseek-r1:7b"),
         ollama_small_model=os.getenv("OLLAMA_SMALL_MODEL", "deepseek-r1:1.5b"),

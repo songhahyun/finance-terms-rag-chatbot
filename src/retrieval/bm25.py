@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pickle
 import re
 from pathlib import Path
 from typing import Callable
@@ -33,6 +34,7 @@ _KOR_TERM_RE = re.compile(r"[가-힣][가-힣A-Za-z0-9·\-/]{1,30}")
 
 _FINAL_CHUNK_JSON_FILENAME = "final_chunk.json"
 _DEFAULT_USER_DICT_FILENAME = "kiwi_user_dict.tsv"
+_DEFAULT_BM25_INDEX_FILENAME = "bm25_index.pkl"
 
 _TERM_KEYS = ("용어",)
 _DESC_KEYS = ("설명",)
@@ -124,6 +126,74 @@ def _resolve_final_chunk_json_file(chunk_json_path: str) -> Path:
         return p
 
     return p / _FINAL_CHUNK_JSON_FILENAME
+
+
+def _resolve_bm25_index_file(chunk_json_path: str) -> Path:
+    """Return the persistent pickle path for the BM25 retriever index."""
+    chunk_json_file = _resolve_final_chunk_json_file(chunk_json_path)
+    return chunk_json_file.with_name(_DEFAULT_BM25_INDEX_FILENAME)
+
+
+def _preprocess_func_key(preprocess_func: Callable[[str], list[str]]) -> str:
+    """Build a stable-ish identifier for cache compatibility checks."""
+    module = getattr(preprocess_func, "__module__", "")
+    qualname = getattr(preprocess_func, "__qualname__", repr(preprocess_func))
+    return f"{module}.{qualname}"
+
+
+def _bm25_cache_metadata(
+    chunk_json_file: Path,
+    preprocess_func: Callable[[str], list[str]],
+) -> dict[str, object]:
+    stat = chunk_json_file.stat()
+    return {
+        "source_path": str(chunk_json_file.resolve()),
+        "source_mtime_ns": stat.st_mtime_ns,
+        "source_size": stat.st_size,
+        "preprocess_func": _preprocess_func_key(preprocess_func),
+    }
+
+
+def _load_cached_bm25_retriever(
+    index_file: Path,
+    expected_metadata: dict[str, object],
+):
+    """Load a cached BM25 retriever if it matches the current source file."""
+    if not index_file.exists():
+        return None
+
+    try:
+        with index_file.open("rb") as f:
+            payload = pickle.load(f)
+    except (OSError, pickle.PickleError, EOFError, AttributeError, ImportError):
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    if payload.get("metadata") != expected_metadata:
+        return None
+
+    return payload.get("retriever")
+
+
+def _write_cached_bm25_retriever(
+    index_file: Path,
+    retriever,
+    metadata: dict[str, object],
+) -> None:
+    """Persist the BM25 retriever and source metadata as a pickle payload."""
+    index_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with index_file.open("wb") as f:
+        pickle.dump(
+            {
+                "metadata": metadata,
+                "retriever": retriever,
+            },
+            f,
+            protocol=pickle.HIGHEST_PROTOCOL,
+        )
 
 
 # =============================================================================
@@ -386,9 +456,19 @@ def build_bm25_retriever(
     *,
     k: int = 5,
     preprocess_func: Callable[[str], list[str]] = tokenize_ko,
+    index_path: str | Path | None = None,
 ):
-    """Build a BM25 retriever and ensure Kiwi user dictionary is loaded."""
+    """Build or load a cached BM25 retriever and ensure Kiwi user dictionary is loaded."""
     _load_kiwi_user_dictionary(chunk_json_path)
+
+    chunk_json_file = _resolve_final_chunk_json_file(chunk_json_path)
+    index_file = Path(index_path) if index_path is not None else _resolve_bm25_index_file(chunk_json_path)
+    cache_metadata = _bm25_cache_metadata(chunk_json_file, preprocess_func)
+    cached_retriever = _load_cached_bm25_retriever(index_file, cache_metadata)
+
+    if cached_retriever is not None:
+        cached_retriever.k = k
+        return cached_retriever
 
     chunks = load_chunks(chunk_json_path)
     docs = chunks_to_documents(chunks)
@@ -398,5 +478,6 @@ def build_bm25_retriever(
         k=k,
         preprocess_func=preprocess_func,
     )
+    _write_cached_bm25_retriever(index_file, retriever, cache_metadata)
 
     return retriever

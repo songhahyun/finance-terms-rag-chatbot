@@ -16,6 +16,7 @@ def build_retriever(
     dense_collection_name: str = "docs_clova",
     dense_persist_directory: str | None = None,
     chunk_json_path: str | None = None,
+    bm25_index_path: str | None = None,
     k: int = 5,
 ):
     """Create the configured retriever implementation for the pipeline.
@@ -40,6 +41,7 @@ def build_retriever(
     if mode == "bm25":
         return build_bm25_retriever(
             chunk_json_path=chunk_json_path,
+            index_path=bm25_index_path,
             k=k,
         )
     
@@ -53,6 +55,7 @@ def build_retriever(
         )
         bm25 = build_bm25_retriever(
             chunk_json_path=chunk_json_path,
+            index_path=bm25_index_path,
             k=k,
         )
         return HybridRetriever(dense, bm25, k=k)

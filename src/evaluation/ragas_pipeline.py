@@ -67,6 +67,7 @@ def run_ragas_evaluation(
     dense_model_name: str = "bge-m3",
     dense_collection_name: str = "docs_clova",
     dense_persist_directory: str | None = None,
+    bm25_index_path: str | Path | None = None,
     k: int = 5,
     judge_model: str = "gpt-4o-mini",
     judge_embedding_model: str = "text-embedding-3-small",
@@ -91,6 +92,7 @@ def run_ragas_evaluation(
         dense_collection_name=dense_collection_name,
         dense_persist_directory=dense_persist_directory,
         chunk_json_path=str(chunk_json_path),
+        bm25_index_path=str(bm25_index_path) if bm25_index_path is not None else None,
         k=k,
     )
     generator = OllamaGenerator(

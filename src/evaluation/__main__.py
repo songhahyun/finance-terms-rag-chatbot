@@ -10,11 +10,13 @@ def main() -> None:
     """Parse CLI arguments and run the RAGAS evaluation entry point.
     Print a compact summary after writing detailed outputs to disk."""
     settings = get_settings()
+    default_bm25_index_path = settings.default_chunk_json_path.with_name("bm25_index.pkl")
     parser = argparse.ArgumentParser(description="Run RAGAS evaluation pipeline")
     parser.add_argument("--eval-csv", default=str(settings.default_eval_csv_path))
     parser.add_argument("--chunk-json", default=str(settings.default_chunk_json_path))
-    parser.add_argument("--output-csv", default=str(settings.eval_data_dir / "ragas_eval_result.csv"))
-    parser.add_argument("--output-summary-csv", default=str(settings.eval_data_dir / "ragas_eval_summary.csv"))
+    parser.add_argument("--bm25-index-path", default=str(default_bm25_index_path))
+    parser.add_argument("--output-csv", default=str(settings.eval_output_dir / "ragas_eval_result.csv"))
+    parser.add_argument("--output-summary-csv", default=str(settings.eval_output_dir / "ragas_eval_summary.csv"))
     parser.add_argument("--retrieval-mode", choices=["dense", "bm25", "hybrid"], default="hybrid")
     parser.add_argument("--dense-provider", choices=["openai", "clova", "local"], default="clova")
     parser.add_argument("--dense-model-name", default="bge-m3")
@@ -41,6 +43,7 @@ def main() -> None:
         dense_model_name=args.dense_model_name,
         dense_collection_name=args.dense_collection_name,
         dense_persist_directory=args.dense_persist_directory,
+        bm25_index_path=args.bm25_index_path,
         k=args.k,
         judge_model=args.judge_model,
         judge_embedding_model=args.judge_embedding_model,
