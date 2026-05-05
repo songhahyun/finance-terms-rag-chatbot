@@ -122,7 +122,9 @@ def _resolve_final_chunk_json_file(chunk_json_path: str) -> Path:
     """
     p = Path(chunk_json_path)
 
-    if p.is_file():
+    # Treat explicit json paths as file targets even when they do not exist yet.
+    # This avoids accidentally producing ".../final_chunk.json/final_chunk.json".
+    if p.suffix.lower() == ".json" or p.is_file():
         return p
 
     return p / _FINAL_CHUNK_JSON_FILENAME
