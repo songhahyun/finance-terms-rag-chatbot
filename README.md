@@ -120,7 +120,27 @@ Invoke-RestMethod `
 - `GET /monitor/summary`: stage별 `success_rate`, `avg_elapsed_sec`, `avg_throughput` 확인
 - `GET /monitor/recent`: 최근 trace의 stage 상세(`success`, `elapsed_sec`, `throughput`, `error`) 확인
 
-## 7) 프로젝트 디렉토리 구조
+## 7) Generation 실험 Weave 로깅
+
+W&B Weave에 generation 실험의 query별 입력, 검색 결과, 생성 답변, latency, retrieval metric을 기록합니다.
+
+```python
+from src.evaluation.pipeline import run_generation_experiment
+
+result_df = run_generation_experiment(
+    experiment_name="generation_hybrid_clova_bge-m3",
+    eval_csv_path="data/eval/testset/golden_testset_v2.csv",
+    chunk_json_path="data/processed/final_chunk.json",
+    retrieval_mode="hybrid",
+    dense_provider="clova",
+    dense_model_name="bge-m3",
+    dense_collection_name="docs_clova",
+    use_weave=True,
+    weave_project="finance-terms-rag-generation",
+)
+```
+
+## 8) 프로젝트 디렉토리 구조
 
 ```text
 finance-terms-rag-chatbot/

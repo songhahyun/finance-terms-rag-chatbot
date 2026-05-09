@@ -34,6 +34,27 @@ def _require_hf_token_for_local(provider: str | None) -> None:
     raise ValueError("`dense_provider='local'` requires HF_TOKEN or HUGGING_FACE_HUB_TOKEN in environment.")
 
 
+def _load_weave():
+    """Import Weave only when experiment logging has been explicitly enabled."""
+    try:
+        import weave
+    except ImportError as exc:
+        raise ImportError("Weave is not installed. Run `pip install weave` or `pip install -r requirements.txt`.") from exc
+    return weave
+
+
+def _serialize_docs(docs: list) -> list[dict[str, Any]]:
+    """Convert retrieved documents into JSON-friendly records for experiment logs."""
+    return [
+        {
+            "chunk_id": doc.metadata.get("chunk_id"),
+            "source": doc.metadata.get("source"),
+            "text": doc.page_content,
+        }
+        for doc in docs
+    ]
+
+
 def _default_dense_variants() -> list[dict[str, str]]:
     """Return default embedding variants for dense/hybrid retrieval experiments."""
     settings = get_settings()
@@ -174,9 +195,13 @@ def run_generation_experiment(
     ollama_timeout: int | None = None,
     k: int = 5,
     language: str | None = None,
+    use_weave: bool = False,
+    weave_project: str | None = None,
+    weave_log_contexts: bool = True,
 ) -> pd.DataFrame:
     """Run one stage-wise generation experiment and return per-row result DataFrame.
-    Use one fixed answer generator for every query."""
+    Use one fixed answer generator for every query.
+    When `use_weave` is true, log each case and aggregate metrics to W&B Weave."""
     settings = get_settings()
     resolved_dense_model_name = _resolve_dense_model_name(dense_provider, dense_model_name)
     _require_hf_token_for_local(dense_provider)
@@ -203,8 +228,40 @@ def run_generation_experiment(
     df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
     rows: list[dict[str, Any]] = []
 
-    for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Generation [{experiment_name}]"):
-        query = row["query"]
+    log_generation_case = None
+    log_generation_summary = None
+    if use_weave:
+        weave = _load_weave()
+        weave.init(weave_project or os.getenv("WEAVE_PROJECT", "finance-terms-rag-generation"))
+
+        @weave.op()
+        def _log_generation_case(record: dict[str, Any]) -> dict[str, Any]:
+            return record
+
+        @weave.op()
+        def _log_generation_summary(summary: dict[str, Any]) -> dict[str, Any]:
+            return summary
+
+        log_generation_case = _log_generation_case
+        log_generation_summary = _log_generation_summary
+
+    experiment_config = {
+        "experiment": experiment_name,
+        "retrieval_mode": retrieval_mode,
+        "dense_provider": dense_provider,
+        "dense_model_name": resolved_dense_model_name,
+        "dense_collection_name": dense_collection_name,
+        "dense_persist_directory": dense_persist_directory,
+        "chunk_json_path": str(chunk_json_path),
+        "bm25_index_path": str(bm25_index_path) if bm25_index_path is not None else None,
+        "ollama_model": ollama_model or settings.ollama_model,
+        "ollama_base_url": ollama_base_url or settings.ollama_base_url,
+        "k": k,
+        "language": language,
+    }
+
+    for row_index, (_, row) in enumerate(tqdm(df.iterrows(), total=len(df), desc=f"Generation [{experiment_name}]")):
+        query = str(row["query"])
         golden_ids = parse_golden_ids(row["chunk_id"])
 
         docs, stage_1_retrieval_latency_sec = measure_retrieval_latency(rag.retriever.invoke, query)
@@ -220,25 +277,31 @@ def run_generation_experiment(
 
         total_latency_sec = stage_1_retrieval_latency_sec + stage_2_generation_latency_sec
 
-        rows.append(
-            {
-                "experiment": experiment_name,
-                "retrieval_mode": retrieval_mode,
-                "dense_provider": dense_provider,
-                "dense_model_name": resolved_dense_model_name,
-                "dense_collection_name": dense_collection_name,
-                "query": query,
-                "golden_ids": golden_ids,
-                "retrieved_ids": retrieved_ids,
-                "hit": hit_score(retrieved_ids, golden_ids),
-                "recall": recall_score(retrieved_ids, golden_ids),
-                "mrr": mrr_score(retrieved_ids, golden_ids),
-                "stage_1_retrieval_latency_sec": stage_1_retrieval_latency_sec,
-                "stage_2_generation_answer": stage_2_generation_answer,
-                "stage_2_generation_latency_sec": stage_2_generation_latency_sec,
-                "total_latency_sec": total_latency_sec,
-            }
-        )
+        result = {
+            "experiment": experiment_name,
+            "retrieval_mode": retrieval_mode,
+            "dense_provider": dense_provider,
+            "dense_model_name": resolved_dense_model_name,
+            "dense_collection_name": dense_collection_name,
+            "row_index": int(row_index),
+            "query": query,
+            "golden_ids": golden_ids,
+            "retrieved_ids": retrieved_ids,
+            "hit": hit_score(retrieved_ids, golden_ids),
+            "recall": recall_score(retrieved_ids, golden_ids),
+            "mrr": mrr_score(retrieved_ids, golden_ids),
+            "stage_1_retrieval_latency_sec": stage_1_retrieval_latency_sec,
+            "stage_2_generation_answer": stage_2_generation_answer,
+            "stage_2_generation_latency_sec": stage_2_generation_latency_sec,
+            "total_latency_sec": total_latency_sec,
+        }
+        rows.append(result)
+
+        if log_generation_case is not None:
+            weave_record = {**experiment_config, **result}
+            if weave_log_contexts:
+                weave_record["contexts"] = _serialize_docs(docs)
+            log_generation_case(weave_record)
 
     result_df = pd.DataFrame(rows)
 
@@ -250,6 +313,22 @@ def run_generation_experiment(
     avg_recall = float(result_df["recall"].mean()) if not result_df.empty else 0.0
     avg_mrr = float(result_df["mrr"].mean()) if not result_df.empty else 0.0
     avg_total_latency = float(result_df["total_latency_sec"].mean()) if not result_df.empty else 0.0
+    if log_generation_summary is not None:
+        summary = {
+            **experiment_config,
+            "rows": len(result_df),
+            "avg_hit": float(result_df["hit"].mean()) if not result_df.empty else 0.0,
+            "avg_recall": avg_recall,
+            "avg_mrr": avg_mrr,
+            "avg_stage_1_retrieval_latency_sec": (
+                float(result_df["stage_1_retrieval_latency_sec"].mean()) if not result_df.empty else 0.0
+            ),
+            "avg_stage_2_generation_latency_sec": (
+                float(result_df["stage_2_generation_latency_sec"].mean()) if not result_df.empty else 0.0
+            ),
+            "avg_total_latency_sec": avg_total_latency,
+        }
+        log_generation_summary(summary)
     print(
         f"[{experiment_name}] recall={avg_recall:.4f}, mrr={avg_mrr:.4f}, avg_total_latency_sec={avg_total_latency:.4f}"
     )
