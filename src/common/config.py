@@ -37,7 +37,7 @@ def get_settings() -> Settings:
     raw_dir = data_dir / "raw"
     processed_dir = data_dir / "processed"
     eval_input_dir = data_dir / "eval" / "testset"
-    eval_output_dir = data_dir / "eval" / "output"
+    eval_output_dir = data_dir / "eval" / "outputs"
     default_pdf_name = os.getenv("DEFAULT_PDF_FILENAME", "2020_경제금융용어 700선.pdf")
 
     return Settings(
