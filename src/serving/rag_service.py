@@ -43,32 +43,14 @@ class RAGService:
             chunk_json_path=str(self._settings.default_chunk_json_path),
             k=k,
         )
-        keyword_extractor = OllamaGenerator(
-            model=self._settings.ollama_small_model,
-            base_url=self._settings.ollama_base_url,
-            timeout=self._settings.ollama_timeout,
-        )
-        complexity_classifier = OllamaGenerator(
-            model=self._settings.ollama_small_model,
-            base_url=self._settings.ollama_base_url,
-            timeout=self._settings.ollama_timeout,
-        )
-        simple_generator = OllamaGenerator(
-            model=self._settings.ollama_small_model,
-            base_url=self._settings.ollama_base_url,
-            timeout=self._settings.ollama_timeout,
-        )
-        complex_generator = OllamaGenerator(
-            model=self._settings.ollama_complex_model,
+        generator = OllamaGenerator(
+            model=self._settings.ollama_model,
             base_url=self._settings.ollama_base_url,
             timeout=self._settings.ollama_timeout,
         )
         return RAGPipeline(
             retriever,
-            keyword_extractor=keyword_extractor,
-            complexity_classifier=complexity_classifier,
-            simple_generator=simple_generator,
-            complex_generator=complex_generator,
+            generator=generator,
             monitor=self._monitor,
             monitor_stage3_timeout_sec=self._settings.monitor_stage3_timeout_sec,
         )
@@ -97,10 +79,6 @@ class RAGService:
             "answer": result.get("answer", ""),
             "retrieved_ids": result.get("retrieved_ids", []),
             "sources": sources,
-            "keywords": result.get("keywords", []),
-            "query_type": result.get("query_type"),
-            "route_reason": result.get("route_reason"),
-            "router_target": result.get("router_target"),
             "monitoring": result.get("monitoring"),
         }
 
@@ -170,4 +148,3 @@ def stream_answer(
     worker = Thread(target=_worker, daemon=True)
     worker.start()
     return queue, result_holder, error_holder
-

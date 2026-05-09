@@ -2,14 +2,12 @@
 
 import os
 from pathlib import Path
-from time import perf_counter
 from typing import Any
 
 import pandas as pd
 from tqdm.auto import tqdm
 
 from src.common.config import get_settings
-from src.common.schema import load_chunks
 from src.evaluation.metrics import hit_score, measure_retrieval_latency, mrr_score, parse_golden_ids, recall_score
 from src.generation.context import build_context
 from src.generation.llm import OllamaGenerator
@@ -171,15 +169,14 @@ def run_generation_experiment(
     dense_persist_directory: str | None = None,
     bm25_index_path: str | Path | None = None,
     output_csv_path: str | Path | None = None,
-    ollama_small_model: str | None = None,
-    ollama_complex_model: str | None = None,
+    ollama_model: str | None = None,
     ollama_base_url: str | None = None,
     ollama_timeout: int | None = None,
     k: int = 5,
     language: str | None = None,
 ) -> pd.DataFrame:
     """Run one stage-wise generation experiment and return per-row result DataFrame.
-    Stage 1/2-b/3(simple) use small model and stage 3(complex) uses complex model."""
+    Use one fixed answer generator for every query."""
     settings = get_settings()
     resolved_dense_model_name = _resolve_dense_model_name(dense_provider, dense_model_name)
     _require_hf_token_for_local(dense_provider)
@@ -194,22 +191,14 @@ def run_generation_experiment(
         bm25_index_path=str(bm25_index_path) if bm25_index_path is not None else None,
         k=k,
     )
-    small_generator = OllamaGenerator(
-        model=ollama_small_model or settings.ollama_small_model,
-        base_url=ollama_base_url or settings.ollama_base_url,
-        timeout=ollama_timeout or settings.ollama_timeout,
-    )
-    complex_generator = OllamaGenerator(
-        model=ollama_complex_model or settings.ollama_complex_model,
+    generator = OllamaGenerator(
+        model=ollama_model or settings.ollama_model,
         base_url=ollama_base_url or settings.ollama_base_url,
         timeout=ollama_timeout or settings.ollama_timeout,
     )
     rag = RAGPipeline(
         retriever=retriever,
-        keyword_extractor=small_generator,
-        complexity_classifier=small_generator,
-        simple_generator=small_generator,
-        complex_generator=complex_generator,
+        generator=generator,
     )
     df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
     rows: list[dict[str, Any]] = []
@@ -218,35 +207,18 @@ def run_generation_experiment(
         query = row["query"]
         golden_ids = parse_golden_ids(row["chunk_id"])
 
-        t0 = perf_counter()
-        stage_1_keywords = rag._extract_keywords(query)
-        stage_1_latency_sec = perf_counter() - t0
-        stage_2a_retrieval_query = rag._build_retrieval_query(query, stage_1_keywords)
-
-        docs, stage_2a_latency_sec = measure_retrieval_latency(rag.retriever.invoke, stage_2a_retrieval_query)
+        docs, stage_1_retrieval_latency_sec = measure_retrieval_latency(rag.retriever.invoke, query)
         retrieved_ids = [doc.metadata.get("chunk_id") for doc in docs]
-
-        (stage_2b_query_type, stage_2b_route_reason), stage_2b_latency_sec = measure_retrieval_latency(
-            rag._classify_query,
-            query,
-        )
 
         context = build_context(docs)
         answer_prompt = rag._build_answer_prompt(query, context, language=language)
-        if stage_2b_query_type == "simple_definition":
-            stage_3_router_target = "simple_generator"
-            stage_3_generator = rag.simple_generator
-        else:
-            stage_3_router_target = "complex_generator"
-            stage_3_generator = rag.complex_generator
-
-        stage_3_answer, stage_3_latency_sec = measure_retrieval_latency(
+        stage_2_generation_answer, stage_2_generation_latency_sec = measure_retrieval_latency(
             rag._generate_text,
-            stage_3_generator,
+            rag.generator,
             answer_prompt,
         )
 
-        total_latency_sec = stage_1_latency_sec + stage_2a_latency_sec + stage_2b_latency_sec + stage_3_latency_sec
+        total_latency_sec = stage_1_retrieval_latency_sec + stage_2_generation_latency_sec
 
         rows.append(
             {
@@ -257,20 +229,13 @@ def run_generation_experiment(
                 "dense_collection_name": dense_collection_name,
                 "query": query,
                 "golden_ids": golden_ids,
-                "stage_1_keywords": stage_1_keywords,
-                "stage_1_latency_sec": stage_1_latency_sec,
-                "stage_2a_retrieval_query": stage_2a_retrieval_query,
                 "retrieved_ids": retrieved_ids,
                 "hit": hit_score(retrieved_ids, golden_ids),
                 "recall": recall_score(retrieved_ids, golden_ids),
                 "mrr": mrr_score(retrieved_ids, golden_ids),
-                "stage_2a_latency_sec": stage_2a_latency_sec,
-                "stage_2b_query_type": stage_2b_query_type,
-                "stage_2b_route_reason": stage_2b_route_reason,
-                "stage_2b_latency_sec": stage_2b_latency_sec,
-                "stage_3_router_target": stage_3_router_target,
-                "stage_3_answer": stage_3_answer,
-                "stage_3_latency_sec": stage_3_latency_sec,
+                "stage_1_retrieval_latency_sec": stage_1_retrieval_latency_sec,
+                "stage_2_generation_answer": stage_2_generation_answer,
+                "stage_2_generation_latency_sec": stage_2_generation_latency_sec,
                 "total_latency_sec": total_latency_sec,
             }
         )

@@ -16,14 +16,11 @@ pip install -r requirements.txt
 
 ```env
 OLLAMA_BASE_URL="http://localhost:11434"
-OLLAMA_MODEL="deepseek-r1:7b"
-OLLAMA_SMALL_MODEL="deepseek-r1:1.5b"
-OLLAMA_COMPLEX_MODEL="llama3.2:3b"
+OLLAMA_MODEL="llama3.2:3b"
 OLLAMA_TIMEOUT=300
 ```
 
-- `OLLAMA_SMALL_MODEL`: Stage 1(키워드 추출), Stage 2-b(질의 분류), Stage 3 단순 정의 답변
-- `OLLAMA_COMPLEX_MODEL`: Stage 3 복합 추론 답변
+- `OLLAMA_MODEL`: 답변 생성 모델
 
 ## 2) 백엔드 실행 (FastAPI)
 
@@ -111,15 +108,10 @@ Invoke-RestMethod `
 - 회원가입한 사용자는 백엔드 프로세스가 실행 중일 때만 메모리에 유지됩니다.
 - 백엔드 재시작 후에는 `.env`의 기본 admin 계정만 다시 생성됩니다.
 
-## 5) Multi-agent 질의 처리 흐름
+## 5) RAG 질의 처리 흐름
 
-- Stage 1: 사용자 질의에서 키워드 추출 (`OLLAMA_SMALL_MODEL`)
-- Stage 2-a: 키워드 + 원문 질의 기반 Hybrid RAG 검색
-- Stage 2-b: 질의를 `simple_definition` / `complex_reasoning`으로 분류 (`OLLAMA_SMALL_MODEL`)
-- Stage 2-a, 2-b는 병렬 실행
-- Stage 3:
-  - `simple_definition` -> `OLLAMA_SMALL_MODEL`로 답변 생성
-  - `complex_reasoning` -> `OLLAMA_COMPLEX_MODEL`로 답변 생성
+- Stage 1: 원문 질의 기반 Hybrid RAG 검색
+- Stage 2: `OLLAMA_MODEL`(`llama3.2:3b`)로 답변 생성
 
 ## 6) Stage 모니터링 로그 (Admin 계정만 접근 가능)
 
