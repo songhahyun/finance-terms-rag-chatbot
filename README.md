@@ -125,7 +125,7 @@ Invoke-RestMethod `
 W&B Weave에 generation 실험의 query별 입력, 검색 결과, 생성 답변, latency, retrieval metric을 기록합니다.
 
 ```python
-from src.evaluation.pipeline import run_generation_experiment
+from src.evaluation.generation_pipeline import run_generation_experiment
 
 result_df = run_generation_experiment(
     experiment_name="generation_hybrid_clova_bge-m3",
@@ -160,7 +160,7 @@ finance-terms-rag-chatbot/
 │  ├─ embedding/            # 임베딩/벡터스토어 구축
 │  ├─ retrieval/            # BM25/Dense/Hybrid 검색기
 │  ├─ generation/           # 프롬프트/답변 생성 파이프라인
-│  ├─ evaluation/           # 평가 파이프라인 (RAGAS 포함)
+│  ├─ evaluation/           # retrieval/generation/RAGAS 평가 파이프라인
 │  └─ common/               # 공통 설정/스키마/IO
 ├─ chroma_clova/            # Chroma DB (clova)
 ├─ chroma_openai/           # Chroma DB (openai)

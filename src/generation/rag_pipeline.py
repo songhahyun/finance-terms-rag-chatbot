@@ -41,6 +41,40 @@ class RAGPipeline:
             return generator.generate(prompt)
         return generator.generate(prompt, stream=True, on_chunk=on_chunk)
 
+    def _retrieve(self, query: str, trace=None):
+        """Run retrieval with split hybrid monitoring when the retriever supports it."""
+        if all(hasattr(self.retriever, name) for name in ("retrieve_bm25", "retrieve_dense", "fuse")):
+            if trace is None:
+                return self.retriever.invoke(query)
+
+            bm25_docs = trace.run_stage(
+                "stage_1_retrieval_bm25",
+                lambda: self.retriever.retrieve_bm25(query),
+                throughput_unit="docs/sec",
+                throughput_fn=lambda out: len(out),
+            )
+            dense_docs = trace.run_stage(
+                "stage1_1_retrieval_dense",
+                lambda: self.retriever.retrieve_dense(query),
+                throughput_unit="docs/sec",
+                throughput_fn=lambda out: len(out),
+            )
+            return trace.run_stage(
+                "stage_1_retrieval_fusion",
+                lambda: self.retriever.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs),
+                throughput_unit="docs/sec",
+                throughput_fn=lambda out: len(out),
+            )
+
+        if trace is not None:
+            return trace.run_stage(
+                "stage_1_retrieval_fusion",
+                lambda: self.retriever.invoke(query),
+                throughput_unit="docs/sec",
+                throughput_fn=lambda out: len(out),
+            )
+        return self.retriever.invoke(query)
+
     def answer(
         self,
         query: str,
@@ -60,15 +94,7 @@ class RAGPipeline:
                 metadata={"mode": "single_generator"},
             )
 
-        if trace is not None:
-            docs = trace.run_stage(
-                "stage_1_retrieval",
-                lambda: self.retriever.invoke(query),
-                throughput_unit="docs/sec",
-                throughput_fn=lambda out: len(out),
-            )
-        else:
-            docs = self.retriever.invoke(query)
+        docs = self._retrieve(query, trace=trace)
 
         context = build_context(docs)
         answer_prompt = self._build_answer_prompt(query, context, language=language)

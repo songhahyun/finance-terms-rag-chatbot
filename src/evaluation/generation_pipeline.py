@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 from pathlib import Path
@@ -55,127 +55,32 @@ def _serialize_docs(docs: list) -> list[dict[str, Any]]:
     ]
 
 
-def _default_dense_variants() -> list[dict[str, str]]:
-    """Return default embedding variants for dense/hybrid retrieval experiments."""
-    settings = get_settings()
-    return [
-        {
-            "provider": "openai",
-            "model_name": "text-embedding-3-small",
-            "collection_name": "docs_openai",
-            "persist_directory": str(settings.chroma_openai_dir),
-        },
-        {
-            "provider": "clova",
-            "model_name": "bge-m3",
-            "collection_name": "docs_clova",
-            "persist_directory": str(settings.chroma_clova_dir),
-        },
-        {
-            "provider": "local",
-            "model_name": _LOCAL_HF_MODEL_NAME,
-            "collection_name": "docs_local",
-            "persist_directory": str(settings.chroma_local_dir),
-        },
-    ]
+def _measure_generation_retrieval_stages(retriever, query: str) -> tuple[list, dict[str, float]]:
+    """Measure retrieval latency using split hybrid stages when available."""
+    latencies = {
+        "stage_1_retrieval_bm25_latency_sec": 0.0,
+        "stage1_1_retrieval_dense_latency_sec": 0.0,
+        "stage_1_retrieval_fusion_latency_sec": 0.0,
+    }
 
-
-def run_retriever_comparison_evaluation(
-    *,
-    eval_csv_path: str | Path,
-    chunk_json_path: str | Path,
-    output_csv_path: str | Path,
-    output_summary_csv_path: str | Path | None = None,
-    k: int = 5,
-    dense_variants: list[dict[str, str]] | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Run retrieval-only comparison across bm25, dense, and hybrid retrievers.
-    Dense and hybrid are evaluated with openai/clova/local embedding variants."""
-    eval_df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
-    dense_variants = dense_variants or _default_dense_variants()
-
-    experiments: list[dict[str, Any]] = [{"mode": "bm25"}]
-    for variant in dense_variants:
-        experiments.append({"mode": "dense", **variant})
-        experiments.append({"mode": "hybrid", **variant})
-
-    rows: list[dict[str, Any]] = []
-
-    for exp in experiments:
-        mode = exp["mode"]
-        provider = exp.get("provider")
-        model_name = _resolve_dense_model_name(provider, exp.get("model_name"))
-        collection_name = exp.get("collection_name")
-        persist_directory = exp.get("persist_directory")
-        _require_hf_token_for_local(provider)
-
-        if mode == "bm25":
-            exp_label = "bm25"
-        else:
-            exp_label = f"{mode}:{provider}:{model_name}"
-
-        retriever = build_retriever(
-            mode=mode,
-            dense_provider=provider or "clova",
-            dense_model_name=model_name,
-            dense_collection_name=collection_name or "docs_clova",
-            dense_persist_directory=persist_directory,
-            chunk_json_path=str(chunk_json_path),
-            k=k,
+    if all(hasattr(retriever, name) for name in ("retrieve_bm25", "retrieve_dense", "fuse")):
+        bm25_docs, latencies["stage_1_retrieval_bm25_latency_sec"] = measure_retrieval_latency(
+            retriever.retrieve_bm25,
+            query,
         )
-
-        for _, row in tqdm(eval_df.iterrows(), total=len(eval_df), desc=f"Retrieval eval [{exp_label}]"):
-            query = row["query"]
-            golden_ids = parse_golden_ids(row["chunk_id"])
-            docs, query_latency_sec = measure_retrieval_latency(retriever.invoke, query)
-            retrieved_ids = [doc.metadata.get("chunk_id") for doc in docs]
-
-            rows.append(
-                {
-                    "experiment": exp_label,
-                    "mode": mode,
-                    "dense_provider": provider,
-                    "dense_model_name": model_name,
-                    "dense_collection_name": collection_name,
-                    "query": query,
-                    "golden_ids": golden_ids,
-                    "retrieved_ids": retrieved_ids,
-                    "hit": hit_score(retrieved_ids, golden_ids),
-                    "recall": recall_score(retrieved_ids, golden_ids),
-                    "mrr": mrr_score(retrieved_ids, golden_ids),
-                    "query_latency_sec": query_latency_sec,
-                }
-            )
-
-    detail_df = pd.DataFrame(rows)
-    summary_df = (
-        detail_df.groupby(
-            ["experiment", "mode", "dense_provider", "dense_model_name", "dense_collection_name"],
-            dropna=False,
-            as_index=False,
-        )[["hit", "recall", "mrr", "query_latency_sec"]]
-        .mean()
-        .rename(columns={"query_latency_sec": "avg_query_latency_sec"})
-    )
-
-    output_path = Path(output_csv_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    detail_df.to_csv(output_path, index=False, encoding="utf-8-sig")
-
-    if output_summary_csv_path:
-        summary_path = Path(output_summary_csv_path)
-        summary_path.parent.mkdir(parents=True, exist_ok=True)
-        summary_df.to_csv(summary_path, index=False, encoding="utf-8-sig")
-
-    print("\nRetriever comparison summary")
-    for _, s_row in summary_df.iterrows():
-        print(
-            f"[{s_row['experiment']}] "
-            f"hit={s_row['hit']:.4f}, recall={s_row['recall']:.4f}, mrr={s_row['mrr']:.4f}, "
-            f"avg_latency={s_row['avg_query_latency_sec']:.4f}s"
+        dense_docs, latencies["stage1_1_retrieval_dense_latency_sec"] = measure_retrieval_latency(
+            retriever.retrieve_dense,
+            query,
         )
+        docs, latencies["stage_1_retrieval_fusion_latency_sec"] = measure_retrieval_latency(
+            retriever.fuse,
+            dense_docs=dense_docs,
+            bm25_docs=bm25_docs,
+        )
+        return docs, latencies
 
-    return detail_df, summary_df
+    docs, latencies["stage_1_retrieval_fusion_latency_sec"] = measure_retrieval_latency(retriever.invoke, query)
+    return docs, latencies
 
 
 def run_generation_experiment(
@@ -264,7 +169,7 @@ def run_generation_experiment(
         query = str(row["query"])
         golden_ids = parse_golden_ids(row["chunk_id"])
 
-        docs, stage_1_retrieval_latency_sec = measure_retrieval_latency(rag.retriever.invoke, query)
+        docs, retrieval_latencies = _measure_generation_retrieval_stages(rag.retriever, query)
         retrieved_ids = [doc.metadata.get("chunk_id") for doc in docs]
 
         context = build_context(docs)
@@ -275,7 +180,8 @@ def run_generation_experiment(
             answer_prompt,
         )
 
-        total_latency_sec = stage_1_retrieval_latency_sec + stage_2_generation_latency_sec
+        total_retrieval_latency_sec = sum(retrieval_latencies.values())
+        total_latency_sec = total_retrieval_latency_sec + stage_2_generation_latency_sec
 
         result = {
             "experiment": experiment_name,
@@ -290,7 +196,8 @@ def run_generation_experiment(
             "hit": hit_score(retrieved_ids, golden_ids),
             "recall": recall_score(retrieved_ids, golden_ids),
             "mrr": mrr_score(retrieved_ids, golden_ids),
-            "stage_1_retrieval_latency_sec": stage_1_retrieval_latency_sec,
+            **retrieval_latencies,
+            "stage_1_retrieval_total_latency_sec": total_retrieval_latency_sec,
             "stage_2_generation_answer": stage_2_generation_answer,
             "stage_2_generation_latency_sec": stage_2_generation_latency_sec,
             "total_latency_sec": total_latency_sec,
@@ -320,8 +227,17 @@ def run_generation_experiment(
             "avg_hit": float(result_df["hit"].mean()) if not result_df.empty else 0.0,
             "avg_recall": avg_recall,
             "avg_mrr": avg_mrr,
-            "avg_stage_1_retrieval_latency_sec": (
-                float(result_df["stage_1_retrieval_latency_sec"].mean()) if not result_df.empty else 0.0
+            "avg_stage_1_retrieval_total_latency_sec": (
+                float(result_df["stage_1_retrieval_total_latency_sec"].mean()) if not result_df.empty else 0.0
+            ),
+            "avg_stage_1_retrieval_bm25_latency_sec": (
+                float(result_df["stage_1_retrieval_bm25_latency_sec"].mean()) if not result_df.empty else 0.0
+            ),
+            "avg_stage1_1_retrieval_dense_latency_sec": (
+                float(result_df["stage1_1_retrieval_dense_latency_sec"].mean()) if not result_df.empty else 0.0
+            ),
+            "avg_stage_1_retrieval_fusion_latency_sec": (
+                float(result_df["stage_1_retrieval_fusion_latency_sec"].mean()) if not result_df.empty else 0.0
             ),
             "avg_stage_2_generation_latency_sec": (
                 float(result_df["stage_2_generation_latency_sec"].mean()) if not result_df.empty else 0.0
