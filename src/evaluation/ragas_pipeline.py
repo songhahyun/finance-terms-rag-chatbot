@@ -99,6 +99,10 @@ def run_ragas_evaluation(
         model=ollama_model or settings.ollama_model,
         base_url=ollama_base_url or settings.ollama_base_url,
         timeout=ollama_timeout or settings.ollama_timeout,
+        temperature=settings.ollama_temperature,
+        top_p=settings.ollama_top_p,
+        repeat_penalty=settings.ollama_repeat_penalty,
+        keep_alive=settings.ollama_keep_alive,
     )
     rag = RAGPipeline(retriever=retriever, generator=generator)
 

@@ -128,6 +128,10 @@ def run_generation_experiment(
         model=ollama_model or settings.ollama_model,
         base_url=ollama_base_url or settings.ollama_base_url,
         timeout=ollama_timeout or settings.ollama_timeout,
+        temperature=settings.ollama_temperature,
+        top_p=settings.ollama_top_p,
+        repeat_penalty=settings.ollama_repeat_penalty,
+        keep_alive=settings.ollama_keep_alive,
     )
     rag = RAGPipeline(
         retriever=retriever,
@@ -175,6 +179,10 @@ def run_generation_experiment(
         "bm25_index_path": str(bm25_index_path) if bm25_index_path is not None else None,
         "ollama_model": ollama_model or settings.ollama_model,
         "ollama_base_url": ollama_base_url or settings.ollama_base_url,
+        "ollama_temperature": settings.ollama_temperature,
+        "ollama_top_p": settings.ollama_top_p,
+        "ollama_repeat_penalty": settings.ollama_repeat_penalty,
+        "ollama_keep_alive": settings.ollama_keep_alive,
         "k": k,
         "language": language,
     }

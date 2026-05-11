@@ -23,6 +23,10 @@ class Settings:
     ollama_base_url: str
     ollama_model: str
     ollama_timeout: int
+    ollama_temperature: float
+    ollama_top_p: float
+    ollama_repeat_penalty: float
+    ollama_keep_alive: str
     monitor_stage_log_path: Path
     monitor_stage3_timeout_sec: float
 
@@ -55,6 +59,10 @@ def get_settings() -> Settings:
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         ollama_model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
         ollama_timeout=int(os.getenv("OLLAMA_TIMEOUT", "300")),
+        ollama_temperature=float(os.getenv("OLLAMA_TEMPERATURE", "0.2")),
+        ollama_top_p=float(os.getenv("OLLAMA_TOP_P", "0.85")),
+        ollama_repeat_penalty=float(os.getenv("OLLAMA_REPEAT_PENALTY", "1.1")),
+        ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "30m"),
         monitor_stage_log_path=Path(
             os.getenv("MONITOR_STAGE_LOG_PATH", str(root / "logs" / "stage_monitor.log"))
         ),

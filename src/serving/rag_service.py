@@ -47,6 +47,10 @@ class RAGService:
             model=self._settings.ollama_model,
             base_url=self._settings.ollama_base_url,
             timeout=self._settings.ollama_timeout,
+            temperature=self._settings.ollama_temperature,
+            top_p=self._settings.ollama_top_p,
+            repeat_penalty=self._settings.ollama_repeat_penalty,
+            keep_alive=self._settings.ollama_keep_alive,
         )
         return RAGPipeline(
             retriever,

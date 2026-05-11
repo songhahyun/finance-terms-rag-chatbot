@@ -6,10 +6,27 @@ from src.common.ollama_client import OllamaClient
 
 
 class OllamaGenerator:
-    def __init__(self, model: str, base_url: str, timeout: int = 300) -> None:
+    def __init__(
+        self,
+        model: str,
+        base_url: str,
+        timeout: int = 300,
+        temperature: float = 0.2,
+        top_p: float = 0.85,
+        repeat_penalty: float = 1.1,
+        keep_alive: str = "30m",
+    ) -> None:
         """Create an Ollama-backed text generator wrapper.
         Store a configured low-level client for later prompt execution."""
-        self.client = OllamaClient(model=model, base_url=base_url, timeout=timeout)
+        self.client = OllamaClient(
+            model=model,
+            base_url=base_url,
+            timeout=timeout,
+            temperature=temperature,
+            top_p=top_p,
+            repeat_penalty=repeat_penalty,
+            keep_alive=keep_alive,
+        )
 
     def generate(
         self,

@@ -7,12 +7,31 @@ import requests
 
 
 class OllamaClient:
-    def __init__(self, model: str = "qwen2.5:7b", base_url: str = "http://localhost:11434", timeout: int = 300) -> None:
+    def __init__(
+        self,
+        model: str = "qwen2.5:7b",
+        base_url: str = "http://localhost:11434",
+        timeout: int = 300,
+        temperature: float = 0.2,
+        top_p: float = 0.85,
+        repeat_penalty: float = 1.1,
+        keep_alive: str = "30m",
+    ) -> None:
         """Configure a lightweight client for the Ollama HTTP API.
-        Store model selection, base URL, and timeout defaults."""
+        Store model selection, base URL, timeout, and generation defaults."""
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.keep_alive = keep_alive
+        self.options = {
+            "temperature": temperature,
+            "top_p": top_p,
+            "repeat_penalty": repeat_penalty,
+        }
+
+    def _options(self, num_predict: int) -> dict[str, float | int]:
+        """Build per-request Ollama generation options."""
+        return {**self.options, "num_predict": num_predict}
 
     def generate(self, prompt: str, *, num_predict: int = 500) -> str:
         """Send a non-streaming text generation request to Ollama.
@@ -22,7 +41,8 @@ class OllamaClient:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "options": {"num_predict": num_predict},
+            "keep_alive": self.keep_alive,
+            "options": self._options(num_predict),
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
         response.raise_for_status()
@@ -42,7 +62,8 @@ class OllamaClient:
             "model": self.model,
             "prompt": prompt,
             "stream": True,
-            "options": {"num_predict": num_predict},
+            "keep_alive": self.keep_alive,
+            "options": self._options(num_predict),
         }
         parts: list[str] = []
         with requests.post(url, json=payload, timeout=self.timeout, stream=True) as response:
@@ -68,7 +89,8 @@ class OllamaClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
-            "options": {"num_predict": num_predict},
+            "keep_alive": self.keep_alive,
+            "options": self._options(num_predict),
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
         response.raise_for_status()
