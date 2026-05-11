@@ -16,7 +16,7 @@ pip install -r requirements.txt
 
 ```env
 OLLAMA_BASE_URL="http://localhost:11434"
-OLLAMA_MODEL="llama3.2:3b"
+OLLAMA_MODEL="qwen2.5:7b-instruct"
 OLLAMA_TIMEOUT=300
 ```
 
@@ -111,7 +111,7 @@ Invoke-RestMethod `
 ## 5) RAG 질의 처리 흐름
 
 - Stage 1: 원문 질의 기반 Hybrid RAG 검색
-- Stage 2: `OLLAMA_MODEL`(`llama3.2:3b`)로 답변 생성
+- Stage 2: `OLLAMA_MODEL`(`qwen2.5:7b-instruct`)로 답변 생성
 
 ## 6) Stage 모니터링 로그 (Admin 계정만 접근 가능)
 

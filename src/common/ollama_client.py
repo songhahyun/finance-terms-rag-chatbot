@@ -9,7 +9,7 @@ import requests
 class OllamaClient:
     def __init__(
         self,
-        model: str = "qwen2.5:7b",
+        model: str = "qwen2.5:7b-instruct",
         base_url: str = "http://localhost:11434",
         timeout: int = 300,
         temperature: float = 0.2,

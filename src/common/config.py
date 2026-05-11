@@ -57,7 +57,7 @@ def get_settings() -> Settings:
         default_chunk_json_path=processed_dir / "final_chunk.json",
         default_eval_csv_path=eval_input_dir / "golden_testset_v2.csv",
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        ollama_model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
+        ollama_model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct"),
         ollama_timeout=int(os.getenv("OLLAMA_TIMEOUT", "300")),
         ollama_temperature=float(os.getenv("OLLAMA_TEMPERATURE", "0.1")),
         ollama_top_p=float(os.getenv("OLLAMA_TOP_P", "0.8")),
