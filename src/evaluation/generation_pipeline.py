@@ -102,7 +102,10 @@ def run_generation_experiment(
     language: str | None = None,
     use_weave: bool = False,
     weave_project: str | None = None,
+    weave_experiment_group: str | None = None,
     weave_log_contexts: bool = True,
+    weave_log_prompt: bool = True,
+    weave_print_call_link: bool = False,
 ) -> pd.DataFrame:
     """Run one stage-wise generation experiment and return per-row result DataFrame.
     Use one fixed answer generator for every query.
@@ -137,7 +140,17 @@ def run_generation_experiment(
     log_generation_summary = None
     if use_weave:
         weave = _load_weave()
-        weave.init(weave_project or os.getenv("WEAVE_PROJECT", "finance-terms-rag-generation"))
+        weave.init(
+            weave_project or os.getenv("WEAVE_PROJECT", "finance-terms-rag-generation"),
+            settings={
+                "print_call_link": weave_print_call_link,
+                "implicitly_patch_integrations": False,
+            },
+            attributes={
+                "experiment_group": weave_experiment_group,
+                "experiment": experiment_name,
+            },
+        )
 
         @weave.op()
         def _log_generation_case(record: dict[str, Any]) -> dict[str, Any]:
@@ -151,6 +164,7 @@ def run_generation_experiment(
         log_generation_summary = _log_generation_summary
 
     experiment_config = {
+        "experiment_group": weave_experiment_group,
         "experiment": experiment_name,
         "retrieval_mode": retrieval_mode,
         "dense_provider": dense_provider,
@@ -206,6 +220,8 @@ def run_generation_experiment(
 
         if log_generation_case is not None:
             weave_record = {**experiment_config, **result}
+            if weave_log_prompt:
+                weave_record["stage_2_generation_prompt"] = answer_prompt
             if weave_log_contexts:
                 weave_record["contexts"] = _serialize_docs(docs)
             log_generation_case(weave_record)

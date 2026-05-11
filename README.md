@@ -137,6 +137,9 @@ result_df = run_generation_experiment(
     dense_collection_name="docs_clova",
     use_weave=True,
     weave_project="finance-terms-rag-generation",
+    weave_experiment_group="generation_v2_2026-05-11",
+    weave_log_prompt=True,
+    weave_print_call_link=False,
 )
 ```
 
