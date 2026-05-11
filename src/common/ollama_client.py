@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable
 
 import requests
+from requests import HTTPError
 
 
 class OllamaClient:
@@ -33,6 +34,24 @@ class OllamaClient:
         """Build per-request Ollama generation options."""
         return {**self.options, "num_predict": num_predict}
 
+    def _raise_for_status(self, response: requests.Response) -> None:
+        """Raise an HTTP error with Ollama response details and model context."""
+        try:
+            response.raise_for_status()
+        except HTTPError as exc:
+            detail = response.text.strip()
+            hint = ""
+            if response.status_code == 404:
+                hint = (
+                    f" Check that Ollama is running at {self.base_url} and the model is pulled: "
+                    f"`ollama pull {self.model}`."
+                )
+            message = (
+                f"{exc} | model={self.model!r} | base_url={self.base_url!r}"
+                f" | response={detail!r}.{hint}"
+            )
+            raise HTTPError(message, response=response) from exc
+
     def generate(self, prompt: str, *, num_predict: int = 500) -> str:
         """Send a non-streaming text generation request to Ollama.
         Return the stripped response body from the API payload."""
@@ -45,7 +64,7 @@ class OllamaClient:
             "options": self._options(num_predict),
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
-        response.raise_for_status()
+        self._raise_for_status(response)
         return response.json().get("response", "").strip()
 
     def generate_stream(
@@ -67,7 +86,7 @@ class OllamaClient:
         }
         parts: list[str] = []
         with requests.post(url, json=payload, timeout=self.timeout, stream=True) as response:
-            response.raise_for_status()
+            self._raise_for_status(response)
             for line in response.iter_lines(decode_unicode=True):
                 if not line:
                     continue
@@ -93,5 +112,5 @@ class OllamaClient:
             "options": self._options(num_predict),
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
-        response.raise_for_status()
+        self._raise_for_status(response)
         return response.json()["message"]["content"].strip()
