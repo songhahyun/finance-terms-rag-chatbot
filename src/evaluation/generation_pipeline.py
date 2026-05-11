@@ -55,7 +55,11 @@ def _serialize_docs(docs: list) -> list[dict[str, Any]]:
     ]
 
 
-def _measure_generation_retrieval_stages(retriever, query: str) -> tuple[list, dict[str, float]]:
+def _measure_generation_retrieval_stages(
+    retriever,
+    query: str,
+    retrieval_mode: str,
+) -> tuple[list, dict[str, float]]:
     """Measure retrieval latency using split hybrid stages when available."""
     latencies = {
         "stage_1_retrieval_bm25_latency_sec": 0.0,
@@ -63,7 +67,9 @@ def _measure_generation_retrieval_stages(retriever, query: str) -> tuple[list, d
         "stage_1_retrieval_fusion_latency_sec": 0.0,
     }
 
-    if all(hasattr(retriever, name) for name in ("retrieve_bm25", "retrieve_dense", "fuse")):
+    retrieval_mode = retrieval_mode.lower()
+
+    if retrieval_mode == "hybrid" and all(hasattr(retriever, name) for name in ("retrieve_bm25", "retrieve_dense", "fuse")):
         bm25_docs, latencies["stage_1_retrieval_bm25_latency_sec"] = measure_retrieval_latency(
             retriever.retrieve_bm25,
             query,
@@ -77,6 +83,14 @@ def _measure_generation_retrieval_stages(retriever, query: str) -> tuple[list, d
             dense_docs=dense_docs,
             bm25_docs=bm25_docs,
         )
+        return docs, latencies
+
+    if retrieval_mode == "dense":
+        docs, latencies["stage1_1_retrieval_dense_latency_sec"] = measure_retrieval_latency(retriever.invoke, query)
+        return docs, latencies
+
+    if retrieval_mode == "bm25":
+        docs, latencies["stage_1_retrieval_bm25_latency_sec"] = measure_retrieval_latency(retriever.invoke, query)
         return docs, latencies
 
     docs, latencies["stage_1_retrieval_fusion_latency_sec"] = measure_retrieval_latency(retriever.invoke, query)
@@ -187,11 +201,12 @@ def run_generation_experiment(
         "language": language,
     }
 
-    for row_index, (_, row) in enumerate(tqdm(df.iterrows(), total=len(df), desc=f"Generation [{experiment_name}]")):
+    for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Generation [{experiment_name}]"):
+        question_id = str(row["question_id"])
         query = str(row["query"])
         golden_ids = parse_golden_ids(row["chunk_id"])
 
-        docs, retrieval_latencies = _measure_generation_retrieval_stages(rag.retriever, query)
+        docs, retrieval_latencies = _measure_generation_retrieval_stages(rag.retriever, query, retrieval_mode)
         retrieved_ids = [doc.metadata.get("chunk_id") for doc in docs]
 
         context = build_context(docs)
@@ -211,7 +226,7 @@ def run_generation_experiment(
             "dense_provider": dense_provider,
             "dense_model_name": resolved_dense_model_name,
             "dense_collection_name": dense_collection_name,
-            "row_index": int(row_index),
+            "question_id": question_id,
             "query": query,
             "golden_ids": golden_ids,
             "retrieved_ids": retrieved_ids,
