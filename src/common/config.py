@@ -26,7 +26,7 @@ class Settings:
     ollama_temperature: float
     ollama_top_p: float
     ollama_repeat_penalty: float
-    ollama_keep_alive: str
+    ollama_keep_alive: str | int
     monitor_stage_log_path: Path
     monitor_stage3_timeout_sec: float
 
@@ -43,6 +43,8 @@ def get_settings() -> Settings:
     eval_input_dir = data_dir / "eval" / "testset"
     eval_output_dir = data_dir / "eval" / "outputs"
     default_pdf_name = os.getenv("DEFAULT_PDF_FILENAME", "2020_경제금융용어 700선.pdf")
+
+    ollama_keep_alive = os.getenv("OLLAMA_KEEP_ALIVE", "-1")
 
     return Settings(
         root_dir=root,
@@ -62,7 +64,7 @@ def get_settings() -> Settings:
         ollama_temperature=float(os.getenv("OLLAMA_TEMPERATURE", "0.1")),
         ollama_top_p=float(os.getenv("OLLAMA_TOP_P", "0.8")),
         ollama_repeat_penalty=float(os.getenv("OLLAMA_REPEAT_PENALTY", "1.2")),
-        ollama_keep_alive=os.getenv("OLLAMA_KEEP_ALIVE", "30m"),
+        ollama_keep_alive=int(ollama_keep_alive) if ollama_keep_alive.lstrip("-").isdigit() else ollama_keep_alive,
         monitor_stage_log_path=Path(
             os.getenv("MONITOR_STAGE_LOG_PATH", str(root / "logs" / "stage_monitor.log"))
         ),

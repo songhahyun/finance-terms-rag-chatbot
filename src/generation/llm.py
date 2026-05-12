@@ -14,7 +14,7 @@ class OllamaGenerator:
         temperature: float = 0.2,
         top_p: float = 0.85,
         repeat_penalty: float = 1.1,
-        keep_alive: str = "30m",
+        keep_alive: str | int = -1,
     ) -> None:
         """Create an Ollama-backed text generator wrapper.
         Store a configured low-level client for later prompt execution."""
