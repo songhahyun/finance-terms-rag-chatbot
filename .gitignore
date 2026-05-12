@@ -10,10 +10,6 @@ venv/
 .venv/
 .env
 
-#Hydra outputs
-outputs/
-multirun/
-
 #logs
 logs/
 *.log
