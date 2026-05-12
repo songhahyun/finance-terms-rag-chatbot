@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import ast
+import os
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 from tqdm.auto import tqdm
 
-from src.common.config import get_settings
 from src.common.io import load_json
-from src.generation.llm import OllamaGenerator
-from src.generation.rag_pipeline import RAGPipeline
-from src.retrieval.factory import build_retriever
+
+_DEFAULT_WEAVE_PROJECT = "finance-terms-rag-evaluation"
+_RAGAS_WEAVE_STAGE = "ragas"
+_RAGAS_WEAVE_SCHEMA_VERSION = "ragas_v1"
 
 
 def _parse_id_list(raw_value: Any) -> list[str]:
@@ -31,6 +32,30 @@ def _parse_id_list(raw_value: Any) -> list[str]:
     return [str(raw_value)]
 
 
+def _parse_contexts(raw_value: Any) -> list[str]:
+    """Normalize serialized context records from generated CSV outputs."""
+    if isinstance(raw_value, list):
+        values = raw_value
+    elif isinstance(raw_value, str) and raw_value.startswith("["):
+        try:
+            parsed = ast.literal_eval(raw_value)
+            values = parsed if isinstance(parsed, list) else [raw_value]
+        except (SyntaxError, ValueError):
+            values = [raw_value]
+    elif pd.isna(raw_value):
+        values = []
+    else:
+        values = [str(raw_value)]
+
+    contexts: list[str] = []
+    for value in values:
+        if isinstance(value, dict):
+            contexts.append(str(value.get("text") or value.get("page_content") or ""))
+        else:
+            contexts.append(str(value))
+    return [context for context in contexts if context]
+
+
 def _read_chunk_fields(item: dict[str, Any]) -> tuple[str, str]:
     """Read term and description fields from a chunk record.
     Support both Korean source keys and normalized English keys."""
@@ -39,8 +64,8 @@ def _read_chunk_fields(item: dict[str, Any]) -> tuple[str, str]:
     return term, description
 
 
-def _build_reference_lookup(chunk_json_path: str | Path) -> dict[str, str]:
-    """Build a chunk-id lookup for RAGAS ground-truth text.
+def _build_chunk_text_lookup(chunk_json_path: str | Path) -> dict[str, str]:
+    """Build a chunk-id lookup for RAGAS context and ground-truth text.
     Skip rows that do not provide a usable chunk identifier."""
     rows = load_json(chunk_json_path)
     lookup: dict[str, str] = {}
@@ -53,30 +78,59 @@ def _build_reference_lookup(chunk_json_path: str | Path) -> dict[str, str]:
     return lookup
 
 
+def _get_required_text(row: pd.Series, candidates: tuple[str, ...], label: str) -> str:
+    """Read a required text field from one of several compatible column names."""
+    for column in candidates:
+        if column in row and not pd.isna(row[column]):
+            return str(row[column])
+    raise KeyError(f"Generated CSV is missing required {label} column. Tried: {', '.join(candidates)}")
+
+
+def _create_judge_embeddings(model_name: str):
+    """Create embeddings for RAGAS metrics.
+    Use OpenAI for OpenAI model names and HuggingFace for local sentence-transformer names."""
+    if model_name.startswith("text-embedding-"):
+        from langchain_openai import OpenAIEmbeddings  # noqa: PLC0415
+
+        return OpenAIEmbeddings(model=model_name)
+
+    from langchain_huggingface import HuggingFaceEmbeddings  # noqa: PLC0415
+
+    hf_model_name = {
+        "multilingual-e5-large": "intfloat/multilingual-e5-large",
+    }.get(model_name, model_name)
+    return HuggingFaceEmbeddings(model_name=hf_model_name)
+
+
+def _load_weave():
+    """Import Weave only when experiment logging has been explicitly enabled."""
+    try:
+        import weave
+    except ImportError as exc:
+        raise ImportError("Weave is not installed. Run `pip install weave` or `pip install -r requirements.txt`.") from exc
+    return weave
+
+
 def run_ragas_evaluation(
     *,
-    eval_csv_path: str | Path,
+    generated_csv_path: str | Path,
     chunk_json_path: str | Path,
     output_csv_path: str | Path,
     output_summary_path: str | Path | None = None,
-    retrieval_mode: str = "hybrid",
-    ollama_model: str | None = None,
-    ollama_base_url: str | None = None,
-    ollama_timeout: int | None = None,
-    dense_provider: str = "clova",
-    dense_model_name: str = "bge-m3",
-    dense_collection_name: str = "docs_clova",
-    dense_persist_directory: str | None = None,
-    bm25_index_path: str | Path | None = None,
-    k: int = 5,
     judge_model: str = "gpt-4o-mini",
     judge_embedding_model: str = "text-embedding-3-small",
+    use_weave: bool = False,
+    weave_project: str | None = None,
+    weave_experiment_group: str | None = None,
+    weave_experiment_name: str | None = None,
+    weave_log_contexts: bool = True,
+    weave_print_call_link: bool = False,
 ) -> tuple[pd.DataFrame, dict[str, float]]:
-    """Run a RAGAS-based evaluation workflow on the test set.
+    """Run RAGAS evaluation from a generated-answer CSV.
     Save detailed scores and return both row-level data and summary means."""
     try:
         from datasets import Dataset  # noqa: PLC0415
-        from langchain_openai import ChatOpenAI, OpenAIEmbeddings  # noqa: PLC0415
+        from langchain_openai import ChatOpenAI  # noqa: PLC0415
         from ragas import evaluate  # noqa: PLC0415
         from ragas.embeddings import LangchainEmbeddingsWrapper  # noqa: PLC0415
         from ragas.llms import LangchainLLMWrapper  # noqa: PLC0415
@@ -84,47 +138,77 @@ def run_ragas_evaluation(
     except ImportError as exc:
         raise ImportError("RAGAS evaluation dependencies are missing. Run `pip install -r requirements.txt`.") from exc
 
-    settings = get_settings()
-    retriever = build_retriever(
-        mode=retrieval_mode,
-        dense_provider=dense_provider,
-        dense_model_name=dense_model_name,
-        dense_collection_name=dense_collection_name,
-        dense_persist_directory=dense_persist_directory,
-        chunk_json_path=str(chunk_json_path),
-        bm25_index_path=str(bm25_index_path) if bm25_index_path is not None else None,
-        k=k,
-    )
-    generator = OllamaGenerator(
-        model=ollama_model or settings.ollama_model,
-        base_url=ollama_base_url or settings.ollama_base_url,
-        timeout=ollama_timeout or settings.ollama_timeout,
-        temperature=settings.ollama_temperature,
-        top_p=settings.ollama_top_p,
-        repeat_penalty=settings.ollama_repeat_penalty,
-        keep_alive=settings.ollama_keep_alive,
-    )
-    rag = RAGPipeline(retriever=retriever, generator=generator)
-
-    eval_df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
-    ref_lookup = _build_reference_lookup(chunk_json_path)
+    generated_df = pd.read_csv(generated_csv_path, encoding="utf-8-sig")
+    chunk_lookup = _build_chunk_text_lookup(chunk_json_path)
     records: list[dict[str, Any]] = []
+    experiment_name = weave_experiment_name or Path(generated_csv_path).stem
 
-    for _, row in tqdm(eval_df.iterrows(), total=len(eval_df), desc="RAGAS evaluation"):
-        question = str(row["query"])
-        golden_ids = _parse_id_list(row["chunk_id"])
-        result = rag.answer(question)
+    log_ragas_case = None
+    log_ragas_summary = None
+    if use_weave:
+        weave = _load_weave()
+        weave.init(
+            weave_project or os.getenv("WEAVE_PROJECT", _DEFAULT_WEAVE_PROJECT),
+            settings={
+                "print_call_link": weave_print_call_link,
+                "implicitly_patch_integrations": False,
+            },
+            attributes={
+                "experiment_group": weave_experiment_group,
+                "experiment": experiment_name,
+                "stage": _RAGAS_WEAVE_STAGE,
+                "schema_version": _RAGAS_WEAVE_SCHEMA_VERSION,
+            },
+        )
 
-        contexts = [doc.page_content for doc in result["contexts"]]
-        ground_truth = "\n\n".join(ref_lookup.get(cid, "") for cid in golden_ids).strip()
+        @weave.op()
+        def _log_ragas_case(record: dict[str, Any]) -> dict[str, Any]:
+            return record
+
+        @weave.op()
+        def _log_ragas_summary(summary_record: dict[str, Any]) -> dict[str, Any]:
+            return summary_record
+
+        log_ragas_case = _log_ragas_case
+        log_ragas_summary = _log_ragas_summary
+
+    experiment_config = {
+        "stage": _RAGAS_WEAVE_STAGE,
+        "schema_version": _RAGAS_WEAVE_SCHEMA_VERSION,
+        "experiment_group": weave_experiment_group,
+        "experiment": experiment_name,
+        "generated_csv_path": str(generated_csv_path),
+        "chunk_json_path": str(chunk_json_path),
+        "judge_model": judge_model,
+        "judge_embedding_model": judge_embedding_model,
+    }
+
+    for _, row in tqdm(
+        generated_df.iterrows(),
+        total=len(generated_df),
+        desc=f"RAGAS evaluation [{experiment_name}]",
+    ):
+        question = _get_required_text(row, ("query", "question"), "question")
+        answer = _get_required_text(row, ("stage_2_generation_answer", "answer"), "answer")
+        golden_ids = _parse_id_list(row["golden_ids"] if "golden_ids" in row else row["chunk_id"])
+        retrieved_ids = _parse_id_list(row["retrieved_ids"]) if "retrieved_ids" in row else []
+        contexts = _parse_contexts(row["contexts"]) if "contexts" in row else []
+        if not contexts:
+            contexts = [chunk_lookup.get(chunk_id, "") for chunk_id in retrieved_ids]
+            contexts = [context for context in contexts if context]
+        ground_truth = (
+            "" if "ground_truth" not in row or pd.isna(row["ground_truth"]) else str(row["ground_truth"])
+        )
+        if not ground_truth:
+            ground_truth = "\n\n".join(chunk_lookup.get(cid, "") for cid in golden_ids).strip()
 
         records.append(
             {
                 "question": question,
-                "answer": result["answer"],
+                "answer": answer,
                 "contexts": contexts,
                 "ground_truth": ground_truth,
-                "retrieved_ids": result["retrieved_ids"],
+                "retrieved_ids": retrieved_ids,
                 "golden_ids": golden_ids,
             }
         )
@@ -142,7 +226,7 @@ def run_ragas_evaluation(
     )
 
     judge_llm = ChatOpenAI(model=judge_model, temperature=0)
-    judge_embeddings = OpenAIEmbeddings(model=judge_embedding_model)
+    judge_embeddings = _create_judge_embeddings(judge_embedding_model)
     result = evaluate(
         dataset=ragas_dataset,
         metrics=[answer_relevancy, faithfulness, context_precision, context_recall],
@@ -151,13 +235,48 @@ def run_ragas_evaluation(
     )
 
     score_df = result.to_pandas()
-    output_df = pd.concat([pd.DataFrame(records), score_df], axis=1)
+    metric_columns = ["answer_relevancy", "faithfulness", "context_precision", "context_recall"]
+    output_df = generated_df.reset_index(drop=True).copy()
+    record_df = pd.DataFrame(records)
+    if "contexts" not in output_df.columns:
+        output_df["contexts"] = record_df["contexts"]
+    if "ground_truth" not in output_df.columns:
+        output_df["ground_truth"] = record_df["ground_truth"]
+    for column in metric_columns:
+        output_df[column] = score_df[column].reset_index(drop=True)
     summary = {
         "answer_relevancy": float(output_df["answer_relevancy"].mean()),
         "faithfulness": float(output_df["faithfulness"].mean()),
         "context_precision": float(output_df["context_precision"].mean()),
         "context_recall": float(output_df["context_recall"].mean()),
     }
+
+    if log_ragas_case is not None:
+        for index, (record, score_row) in enumerate(zip(records, score_df.to_dict("records"), strict=True)):
+            case_record = {
+                **experiment_config,
+                "row_index": index,
+                "question": record["question"],
+                "answer": record["answer"],
+                "ground_truth": record["ground_truth"],
+                "retrieved_ids": record["retrieved_ids"],
+                "golden_ids": record["golden_ids"],
+                **{column: float(score_row[column]) for column in metric_columns},
+            }
+            if "question_id" in generated_df.columns:
+                case_record["question_id"] = str(generated_df.iloc[index]["question_id"])
+            if weave_log_contexts:
+                case_record["contexts"] = record["contexts"]
+            log_ragas_case(case_record)
+
+    if log_ragas_summary is not None:
+        log_ragas_summary(
+            {
+                **experiment_config,
+                "rows": len(output_df),
+                **{f"avg_{key}": value for key, value in summary.items()},
+            }
+        )
 
     output_path = Path(output_csv_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

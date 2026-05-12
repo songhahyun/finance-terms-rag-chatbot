@@ -8,7 +8,14 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from src.common.config import get_settings
-from src.evaluation.metrics import hit_score, measure_retrieval_latency, mrr_score, parse_golden_ids, recall_score
+from src.evaluation.metrics import (
+    bertscore_f1,
+    hit_score,
+    measure_retrieval_latency,
+    mrr_score,
+    parse_golden_ids,
+    recall_score,
+)
 from src.generation.context import build_context
 from src.generation.llm import OllamaGenerator
 from src.generation.rag_pipeline import RAGPipeline
@@ -16,6 +23,9 @@ from src.retrieval.factory import build_retriever
 
 
 _LOCAL_HF_MODEL_NAME = "BAAI/bge-m3"
+_DEFAULT_WEAVE_PROJECT = "finance-terms-rag-evaluation"
+_GENERATION_WEAVE_STAGE = "generation"
+_GENERATION_WEAVE_SCHEMA_VERSION = "generation_v1"
 
 
 def _resolve_dense_model_name(provider: str | None, model_name: str | None) -> str:
@@ -153,13 +163,14 @@ def run_generation_experiment(
     )
     df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
     rows: list[dict[str, Any]] = []
+    weave_extras: list[dict[str, Any]] = []
 
     log_generation_case = None
     log_generation_summary = None
     if use_weave:
         weave = _load_weave()
         weave.init(
-            weave_project or os.getenv("WEAVE_PROJECT", "finance-terms-rag-generation"),
+            weave_project or os.getenv("WEAVE_PROJECT", _DEFAULT_WEAVE_PROJECT),
             settings={
                 "print_call_link": weave_print_call_link,
                 "implicitly_patch_integrations": False,
@@ -167,6 +178,8 @@ def run_generation_experiment(
             attributes={
                 "experiment_group": weave_experiment_group,
                 "experiment": experiment_name,
+                "stage": _GENERATION_WEAVE_STAGE,
+                "schema_version": _GENERATION_WEAVE_SCHEMA_VERSION,
             },
         )
 
@@ -182,6 +195,8 @@ def run_generation_experiment(
         log_generation_summary = _log_generation_summary
 
     experiment_config = {
+        "stage": _GENERATION_WEAVE_STAGE,
+        "schema_version": _GENERATION_WEAVE_SCHEMA_VERSION,
         "experiment_group": weave_experiment_group,
         "experiment": experiment_name,
         "retrieval_mode": retrieval_mode,
@@ -205,6 +220,7 @@ def run_generation_experiment(
         question_id = str(row["question_id"])
         query = str(row["query"])
         golden_ids = parse_golden_ids(row["chunk_id"])
+        ground_truth = "" if pd.isna(row.get("ground_truth", "")) else str(row.get("ground_truth", ""))
 
         docs, retrieval_latencies = _measure_generation_retrieval_stages(rag.retriever, query, retrieval_mode)
         retrieved_ids = [doc.metadata.get("chunk_id") for doc in docs]
@@ -228,6 +244,7 @@ def run_generation_experiment(
             "dense_collection_name": dense_collection_name,
             "question_id": question_id,
             "query": query,
+            "ground_truth": ground_truth,
             "golden_ids": golden_ids,
             "retrieved_ids": retrieved_ids,
             "hit": hit_score(retrieved_ids, golden_ids),
@@ -242,12 +259,24 @@ def run_generation_experiment(
         rows.append(result)
 
         if log_generation_case is not None:
-            weave_record = {**experiment_config, **result}
+            weave_extra = {}
             if weave_log_prompt:
-                weave_record["stage_2_generation_prompt"] = answer_prompt
+                weave_extra["stage_2_generation_prompt"] = answer_prompt
             if weave_log_contexts:
-                weave_record["contexts"] = _serialize_docs(docs)
-            log_generation_case(weave_record)
+                weave_extra["contexts"] = _serialize_docs(docs)
+            weave_extras.append(weave_extra)
+
+    bert_scores = bertscore_f1(
+        [str(row["stage_2_generation_answer"]) for row in rows],
+        [str(row["ground_truth"]) for row in rows],
+        lang="ko",
+    )
+    for row, bert_score in zip(rows, bert_scores, strict=True):
+        row["bertscore_f1"] = bert_score
+
+    if log_generation_case is not None:
+        for result, weave_extra in zip(rows, weave_extras, strict=True):
+            log_generation_case({**experiment_config, **result, **weave_extra})
 
     result_df = pd.DataFrame(rows)
 
@@ -258,6 +287,7 @@ def run_generation_experiment(
 
     avg_recall = float(result_df["recall"].mean()) if not result_df.empty else 0.0
     avg_mrr = float(result_df["mrr"].mean()) if not result_df.empty else 0.0
+    avg_bertscore_f1 = float(result_df["bertscore_f1"].mean()) if not result_df.empty else 0.0
     avg_total_latency = float(result_df["total_latency_sec"].mean()) if not result_df.empty else 0.0
     if log_generation_summary is not None:
         summary = {
@@ -266,6 +296,7 @@ def run_generation_experiment(
             "avg_hit": float(result_df["hit"].mean()) if not result_df.empty else 0.0,
             "avg_recall": avg_recall,
             "avg_mrr": avg_mrr,
+            "avg_bertscore_f1": avg_bertscore_f1,
             "avg_stage_1_retrieval_total_latency_sec": (
                 float(result_df["stage_1_retrieval_total_latency_sec"].mean()) if not result_df.empty else 0.0
             ),
@@ -285,6 +316,7 @@ def run_generation_experiment(
         }
         log_generation_summary(summary)
     print(
-        f"[{experiment_name}] recall={avg_recall:.4f}, mrr={avg_mrr:.4f}, avg_total_latency_sec={avg_total_latency:.4f}"
+        f"[{experiment_name}] recall={avg_recall:.4f}, mrr={avg_mrr:.4f}, "
+        f"bertscore_f1={avg_bertscore_f1:.4f}, avg_total_latency_sec={avg_total_latency:.4f}"
     )
     return result_df

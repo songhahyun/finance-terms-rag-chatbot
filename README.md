@@ -177,7 +177,7 @@ finance-terms-rag-chatbot/
 RAGAS 평가 파이프라인 실행:
 
 ```bash
-python -m src.evaluation --retrieval-mode hybrid
+python -m src.evaluation --generated-csv data/eval/outputs/generation_001_baseline/dense_clova_bge-m3.csv
 ```
 
 ## 9) API 요청/응답 예시
