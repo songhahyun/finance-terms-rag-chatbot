@@ -21,7 +21,3 @@ class ChatResponse(BaseModel):
     answer: str
     retrieved_ids: list[str | None]
     sources: list[SourceItem]
-    keywords: list[str] = []
-    query_type: str | None = None
-    route_reason: str | None = None
-    router_target: str | None = None

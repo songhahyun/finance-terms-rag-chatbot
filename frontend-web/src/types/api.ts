@@ -37,10 +37,6 @@ export interface ChatResponse {
   answer: string;
   retrieved_ids: Array<string | null>;
   sources: SourceItem[];
-  keywords: string[];
-  query_type: string | null;
-  route_reason: string | null;
-  router_target: string | null;
 }
 
 export interface MonitorSummaryItem {

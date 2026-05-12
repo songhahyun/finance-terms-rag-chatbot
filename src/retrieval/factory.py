@@ -5,6 +5,8 @@ from src.retrieval.bm25 import build_bm25_retriever
 from src.retrieval.dense import build_dense_retriever
 from src.retrieval.hybrid import HybridRetriever
 
+_LOCAL_HF_MODEL_NAME = "BAAI/bge-m3"
+
 
 def build_retriever(
     mode: str = "hybrid",
@@ -14,6 +16,7 @@ def build_retriever(
     dense_collection_name: str = "docs_clova",
     dense_persist_directory: str | None = None,
     chunk_json_path: str | None = None,
+    bm25_index_path: str | None = None,
     k: int = 5,
 ):
     """Create the configured retriever implementation for the pipeline.
@@ -21,8 +24,11 @@ def build_retriever(
     settings = get_settings()
     dense_persist_directory = dense_persist_directory or str(settings.chroma_clova_dir)
     chunk_json_path = chunk_json_path or str(settings.default_chunk_json_path)
+    if dense_provider.lower() == "local":
+        dense_model_name = _LOCAL_HF_MODEL_NAME
 
     mode = mode.lower()
+
     if mode == "dense":
         return build_dense_retriever(
             provider=dense_provider,
@@ -31,8 +37,14 @@ def build_retriever(
             persist_directory=dense_persist_directory,
             k=k,
         )
+    
     if mode == "bm25":
-        return build_bm25_retriever(chunk_json_path=chunk_json_path, k=k)
+        return build_bm25_retriever(
+            chunk_json_path=chunk_json_path,
+            index_path=bm25_index_path,
+            k=k,
+        )
+    
     if mode == "hybrid":
         dense = build_dense_retriever(
             provider=dense_provider,
@@ -41,6 +53,10 @@ def build_retriever(
             persist_directory=dense_persist_directory,
             k=k,
         )
-        bm25 = build_bm25_retriever(chunk_json_path=chunk_json_path, k=k)
+        bm25 = build_bm25_retriever(
+            chunk_json_path=chunk_json_path,
+            index_path=bm25_index_path,
+            k=k,
+        )
         return HybridRetriever(dense, bm25, k=k)
     raise ValueError(f"지원하지 않는 mode: {mode}")

@@ -15,8 +15,20 @@ class HybridRetriever:
     def invoke(self, query: str):
         """Retrieve documents from both backends and merge the rankings.
         Return the top results after reciprocal rank fusion."""
-        dense_docs = self.dense_retriever.invoke(query)
-        bm25_docs = self.bm25_retriever.invoke(query)
+        bm25_docs = self.retrieve_bm25(query)
+        dense_docs = self.retrieve_dense(query)
+        return self.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs)
+
+    def retrieve_bm25(self, query: str):
+        """Retrieve sparse BM25 candidates."""
+        return self.bm25_retriever.invoke(query)
+
+    def retrieve_dense(self, query: str):
+        """Retrieve dense vector candidates."""
+        return self.dense_retriever.invoke(query)
+
+    def fuse(self, *, dense_docs: list, bm25_docs: list):
+        """Fuse dense and BM25 candidates and return the top configured results."""
         ranked = self._rrf_merge([dense_docs, bm25_docs])
         return ranked[: self.k]
 
