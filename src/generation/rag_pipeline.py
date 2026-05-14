@@ -69,20 +69,26 @@ class RAGPipeline:
             logger.debug("Generator does not support per-call options; retrying without overrides.")
             return generator.generate(prompt, stream=True, on_chunk=on_chunk)
 
-    def _generate_validated_answer(
+    def _generate_validated_answer_result(
         self,
         answer_prompt: str,
         *,
         on_chunk: Callable[[str], None] | None = None,
-    ) -> str:
-        """Generate an answer, validate language, and retry once if needed."""
+    ) -> dict:
+        """Generate an answer, validate language, and return language metadata."""
         answer = self._generate_text(self.generator, answer_prompt)
         validation = validate_answer_language(answer)
         if validation["is_valid"]:
             logger.info("Answer language validation passed.")
             if on_chunk is not None:
                 on_chunk(answer)
-            return answer
+            return {
+                "answer": answer,
+                "language_validation": {
+                    **validation,
+                    "regeneration_count": 0,
+                },
+            }
 
         logger.warning(
             "Answer language validation failed: reason=%s issues=%s",
@@ -106,7 +112,28 @@ class RAGPipeline:
             )
         if on_chunk is not None:
             on_chunk(regenerated_answer)
-        return regenerated_answer
+        return {
+            "answer": regenerated_answer,
+            "language_validation": {
+                **retry_validation,
+                "regeneration_count": 1,
+                "initial_validation": validation,
+            },
+        }
+
+    def _generate_validated_answer(
+        self,
+        answer_prompt: str,
+        *,
+        on_chunk: Callable[[str], None] | None = None,
+    ) -> str:
+        """Generate an answer, validate language, and return answer text only."""
+        return str(
+            self._generate_validated_answer_result(
+                answer_prompt,
+                on_chunk=on_chunk,
+            )["answer"]
+        )
 
     def _retrieve(self, query: str, trace=None):
         """Run retrieval with split hybrid monitoring when the retriever supports it."""
@@ -166,19 +193,21 @@ class RAGPipeline:
         context = build_context(docs)
         answer_prompt = self._build_answer_prompt(query, context, language=language)
         if trace is not None:
-            answer = trace.run_stage(
+            generation_result = trace.run_stage(
                 "stage_2_generation",
-                lambda: self._generate_validated_answer(answer_prompt, on_chunk=on_chunk),
+                lambda: self._generate_validated_answer_result(answer_prompt, on_chunk=on_chunk),
                 throughput_unit="chars/sec",
-                throughput_fn=lambda out: len(str(out)),
+                throughput_fn=lambda out: len(str(out.get("answer", ""))),
                 timeout_sec=self.monitor_stage3_timeout_sec,
             )
         else:
-            answer = self._generate_validated_answer(answer_prompt, on_chunk=on_chunk)
+            generation_result = self._generate_validated_answer_result(answer_prompt, on_chunk=on_chunk)
 
         result = {
             "query": query,
-            "answer": answer,
+            "answer": generation_result["answer"],
+            "language_validation": generation_result["language_validation"],
+            "regeneration_count": generation_result["language_validation"]["regeneration_count"],
             "retrieved_ids": [doc.metadata.get("chunk_id") for doc in docs],
             "contexts": docs,
         }

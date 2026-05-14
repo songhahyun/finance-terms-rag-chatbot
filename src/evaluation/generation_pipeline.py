@@ -233,10 +233,12 @@ def run_generation_experiment(
 
         context = build_context(docs)
         answer_prompt = rag._build_answer_prompt(query, context, language=language)
-        stage_2_generation_answer, stage_2_generation_latency_sec = measure_retrieval_latency(
-            rag._generate_validated_answer,
+        stage_2_generation_result, stage_2_generation_latency_sec = measure_retrieval_latency(
+            rag._generate_validated_answer_result,
             answer_prompt,
         )
+        stage_2_language_validation = stage_2_generation_result["language_validation"]
+        stage_2_generation_answer = stage_2_generation_result["answer"]
 
         total_retrieval_latency_sec = sum(retrieval_latencies.values())
         total_latency_sec = total_retrieval_latency_sec + stage_2_generation_latency_sec
@@ -258,6 +260,10 @@ def run_generation_experiment(
             **retrieval_latencies,
             "stage_1_retrieval_total_latency_sec": total_retrieval_latency_sec,
             "stage_2_generation_answer": stage_2_generation_answer,
+            "stage_2_language_validation_passed": stage_2_language_validation["is_valid"],
+            "stage_2_language_validation_reason": stage_2_language_validation["reason"],
+            "stage_2_language_validation_issues": stage_2_language_validation["detected_issues"],
+            "stage_2_regeneration_count": stage_2_language_validation["regeneration_count"],
             "stage_2_generation_latency_sec": stage_2_generation_latency_sec,
             "total_latency_sec": total_latency_sec,
         }
@@ -293,6 +299,7 @@ def run_generation_experiment(
     avg_recall = float(result_df["recall"].mean()) if not result_df.empty else 0.0
     avg_mrr = float(result_df["mrr"].mean()) if not result_df.empty else 0.0
     avg_bertscore_f1 = float(result_df["bertscore_f1"].mean()) if not result_df.empty else 0.0
+    avg_regeneration_count = float(result_df["stage_2_regeneration_count"].mean()) if not result_df.empty else 0.0
     avg_total_latency = float(result_df["total_latency_sec"].mean()) if not result_df.empty else 0.0
     if log_generation_summary is not None:
         summary = {
@@ -302,6 +309,7 @@ def run_generation_experiment(
             "avg_recall": avg_recall,
             "avg_mrr": avg_mrr,
             "avg_bertscore_f1": avg_bertscore_f1,
+            "avg_stage_2_regeneration_count": avg_regeneration_count,
             "avg_stage_1_retrieval_total_latency_sec": (
                 float(result_df["stage_1_retrieval_total_latency_sec"].mean()) if not result_df.empty else 0.0
             ),
@@ -322,6 +330,8 @@ def run_generation_experiment(
         log_generation_summary(summary)
     print(
         f"[{experiment_name}] recall={avg_recall:.4f}, mrr={avg_mrr:.4f}, "
-        f"bertscore_f1={avg_bertscore_f1:.4f}, avg_total_latency_sec={avg_total_latency:.4f}"
+        f"bertscore_f1={avg_bertscore_f1:.4f}, "
+        f"avg_regeneration_count={avg_regeneration_count:.4f}, "
+        f"avg_total_latency_sec={avg_total_latency:.4f}"
     )
     return result_df

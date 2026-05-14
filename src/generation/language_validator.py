@@ -6,7 +6,7 @@ import re
 _HIRAGANA_RE = re.compile(r"[\u3040-\u309f]")
 _KATAKANA_RE = re.compile(r"[\u30a0-\u30ff\u31f0-\u31ff]")
 _CJK_IDEOGRAPH_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
-_LONG_CJK_SEQUENCE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]{4,}")
+_LONG_CJK_SEQUENCE_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]{6,}")
 _CJK_BLOCK_RE = re.compile(r"(?:[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]{2,}[\s，。！？；：、]*){2,}")
 _CHINESE_JAPANESE_PUNCTUATION_RE = re.compile(r"[，。！？；：「」『』《》【】、]")
 _COMMON_CHINESE_PATTERN_RE = re.compile(
@@ -34,17 +34,20 @@ def validate_answer_language(text: str) -> dict:
 
     detected_issues: list[str] = []
 
+    # Detect Japanese phonetic scripts, which should not appear in Korean answers.
     if _HIRAGANA_RE.search(text):
         detected_issues.append("contains_japanese_hiragana")
     if _KATAKANA_RE.search(text):
         detected_issues.append("contains_japanese_katakana")
 
+    # Detect long uninterrupted ideograph runs that are more likely Chinese/Japanese than isolated Korean Hanja.
     long_cjk_sequences = _LONG_CJK_SEQUENCE_RE.findall(text)
     if long_cjk_sequences:
         detected_issues.append("contains_long_cjk_ideograph_sequence")
 
+    # Detect multiple CJK ideograph blocks, a common sign of sentence-level Chinese/Japanese drift.
     cjk_blocks = _CJK_BLOCK_RE.findall(text)
-    if len(cjk_blocks) >= 10:
+    if len(cjk_blocks) >= 2:
         detected_issues.append("contains_repeated_cjk_ideograph_blocks")
 
     cjk_count = len(_CJK_IDEOGRAPH_RE.findall(text))
@@ -52,13 +55,17 @@ def validate_answer_language(text: str) -> dict:
     has_cj_punctuation = bool(_CHINESE_JAPANESE_PUNCTUATION_RE.search(text))
     has_common_chinese_pattern = bool(_COMMON_CHINESE_PATTERN_RE.search(text))
 
-    if cjk_count >= 4 and has_cj_punctuation:
+    # Detect CJK text paired with punctuation commonly used in Chinese or Japanese prose.
+    if cjk_count >= 10 and has_cj_punctuation:
         detected_issues.append("contains_cjk_text_with_chinese_japanese_punctuation")
-    if cjk_count >= 6 and has_common_chinese_pattern:
+    # Detect common Chinese function words/patterns when enough CJK ideographs are present.
+    if cjk_count >= 10 and has_common_chinese_pattern:
         detected_issues.append("contains_common_chinese_sentence_pattern")
-    if cjk_count >= 4 and not has_hangul:
+    # Detect answers that contain substantial CJK ideographs but no Korean Hangul at all.
+    if cjk_count >= 10 and not has_hangul:
         detected_issues.append("contains_cjk_text_without_korean_hangul")
 
+    # Reject when any suspicious non-Korean language signals were detected.
     if detected_issues:
         return _issue_result("answer contains likely Chinese or Japanese text", detected_issues)
 
