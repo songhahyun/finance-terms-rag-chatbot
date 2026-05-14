@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
 from src.generation.context import build_context
+from src.generation.language_validator import validate_answer_language
 from src.generation.prompts import RAG_PROMPT
 from src.monitor import PipelineMonitor
+
+logger = logging.getLogger(__name__)
+
+STRICT_KOREAN_REGENERATION_INSTRUCTION = (
+    "The previous answer contained non-Korean text. Rewrite the answer in Korean only. "
+    "Do not use Simplified Chinese, Traditional Chinese, or Japanese. Use English only "
+    "for official financial abbreviations or proper nouns."
+)
 
 
 class RAGPipeline:
@@ -34,12 +44,69 @@ class RAGPipeline:
         return prompt
 
     @staticmethod
-    def _generate_text(generator, prompt: str, on_chunk: Callable[[str], None] | None = None) -> str:
+    def _generate_text(
+        generator,
+        prompt: str,
+        on_chunk: Callable[[str], None] | None = None,
+        *,
+        options: dict[str, float | int] | None = None,
+    ) -> str:
         """Run a prompt through the selected generator.
         Use streaming only when a chunk callback has been provided."""
         if on_chunk is None:
-            return generator.generate(prompt)
-        return generator.generate(prompt, stream=True, on_chunk=on_chunk)
+            if options is None:
+                return generator.generate(prompt)
+            try:
+                return generator.generate(prompt, options=options)
+            except TypeError:
+                logger.debug("Generator does not support per-call options; retrying without overrides.")
+                return generator.generate(prompt)
+        if options is None:
+            return generator.generate(prompt, stream=True, on_chunk=on_chunk)
+        try:
+            return generator.generate(prompt, stream=True, on_chunk=on_chunk, options=options)
+        except TypeError:
+            logger.debug("Generator does not support per-call options; retrying without overrides.")
+            return generator.generate(prompt, stream=True, on_chunk=on_chunk)
+
+    def _generate_validated_answer(
+        self,
+        answer_prompt: str,
+        *,
+        on_chunk: Callable[[str], None] | None = None,
+    ) -> str:
+        """Generate an answer, validate language, and retry once if needed."""
+        answer = self._generate_text(self.generator, answer_prompt)
+        validation = validate_answer_language(answer)
+        if validation["is_valid"]:
+            logger.info("Answer language validation passed.")
+            if on_chunk is not None:
+                on_chunk(answer)
+            return answer
+
+        logger.warning(
+            "Answer language validation failed: reason=%s issues=%s",
+            validation["reason"],
+            validation["detected_issues"],
+        )
+        retry_prompt = f"{answer_prompt}\n\n{STRICT_KOREAN_REGENERATION_INSTRUCTION}"
+        regenerated_answer = self._generate_text(
+            self.generator,
+            retry_prompt,
+            options={"temperature": 0.0},
+        )
+        retry_validation = validate_answer_language(regenerated_answer)
+        if retry_validation["is_valid"]:
+            logger.info("Regenerated answer language validation passed.")
+        else:
+            logger.warning(
+                "Regenerated answer language validation failed: reason=%s issues=%s",
+                retry_validation["reason"],
+                retry_validation["detected_issues"],
+            )
+        if on_chunk is not None:
+            on_chunk(regenerated_answer)
+        return regenerated_answer
 
     def _retrieve(self, query: str, trace=None):
         """Run retrieval with split hybrid monitoring when the retriever supports it."""
@@ -101,13 +168,13 @@ class RAGPipeline:
         if trace is not None:
             answer = trace.run_stage(
                 "stage_2_generation",
-                lambda: self._generate_text(self.generator, answer_prompt, on_chunk),
+                lambda: self._generate_validated_answer(answer_prompt, on_chunk=on_chunk),
                 throughput_unit="chars/sec",
                 throughput_fn=lambda out: len(str(out)),
                 timeout_sec=self.monitor_stage3_timeout_sec,
             )
         else:
-            answer = self._generate_text(self.generator, answer_prompt, on_chunk)
+            answer = self._generate_validated_answer(answer_prompt, on_chunk=on_chunk)
 
         result = {
             "query": query,

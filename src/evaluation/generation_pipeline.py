@@ -130,6 +130,7 @@ def run_generation_experiment(
     weave_log_contexts: bool = True,
     weave_log_prompt: bool = True,
     weave_print_call_link: bool = False,
+    max_rows: int | None = None,
 ) -> pd.DataFrame:
     """Run one stage-wise generation experiment and return per-row result DataFrame.
     Use one fixed answer generator for every query.
@@ -162,6 +163,10 @@ def run_generation_experiment(
         generator=generator,
     )
     df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
+    if max_rows is not None:
+        if max_rows <= 0:
+            raise ValueError("`max_rows` must be a positive integer when provided.")
+        df = df.head(max_rows).copy()
     rows: list[dict[str, Any]] = []
     weave_extras: list[dict[str, Any]] = []
 
@@ -214,6 +219,7 @@ def run_generation_experiment(
         "ollama_keep_alive": settings.ollama_keep_alive,
         "k": k,
         "language": language,
+        "max_rows": max_rows,
     }
 
     for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Generation [{experiment_name}]"):
@@ -228,8 +234,7 @@ def run_generation_experiment(
         context = build_context(docs)
         answer_prompt = rag._build_answer_prompt(query, context, language=language)
         stage_2_generation_answer, stage_2_generation_latency_sec = measure_retrieval_latency(
-            rag._generate_text,
-            rag.generator,
+            rag._generate_validated_answer,
             answer_prompt,
         )
 
