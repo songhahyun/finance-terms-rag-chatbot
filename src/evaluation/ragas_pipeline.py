@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import logging
 import os
+import re
+import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -30,6 +32,54 @@ def _suppress_ragas_generation_warning() -> None:
     if any(isinstance(log_filter, _RagasGenerationWarningFilter) for log_filter in logger.filters):
         return
     logger.addFilter(_RagasGenerationWarningFilter())
+
+
+def _iter_exception_tree(exc: BaseException):
+    """Yield nested exceptions from chained errors and Python 3.11 exception groups."""
+    yield exc
+    for nested in getattr(exc, "exceptions", []) or []:
+        yield from _iter_exception_tree(nested)
+    if exc.__cause__ is not None:
+        yield from _iter_exception_tree(exc.__cause__)
+    if exc.__context__ is not None:
+        yield from _iter_exception_tree(exc.__context__)
+
+
+def _is_rate_limit_error(exc: BaseException) -> bool:
+    """Detect OpenAI/LangChain/RAGAS rate-limit failures without binding to one SDK class."""
+    for nested in _iter_exception_tree(exc):
+        text = str(nested).lower()
+        if nested.__class__.__name__ == "RateLimitError":
+            return True
+        if getattr(nested, "status_code", None) == 429:
+            return True
+        if "rate limit" in text or "rate_limit_exceeded" in text:
+            return True
+    return False
+
+
+def _retry_after_seconds(exc: BaseException) -> float | None:
+    """Read an API retry hint when it is present in headers or the error message."""
+    for nested in _iter_exception_tree(exc):
+        response = getattr(nested, "response", None)
+        headers = getattr(response, "headers", None)
+        if headers:
+            retry_after = headers.get("retry-after") or headers.get("Retry-After")
+            if retry_after:
+                try:
+                    return float(retry_after)
+                except ValueError:
+                    pass
+
+        match = re.search(r"try again in ([0-9.]+)s", str(nested), flags=re.IGNORECASE)
+        if match:
+            return float(match.group(1))
+    return None
+
+
+def _has_complete_metrics(output_df: pd.DataFrame, row_index: int, metric_columns: list[str]) -> bool:
+    """Return True when a row already has all RAGAS metrics from a previous run."""
+    return all(column in output_df.columns and not pd.isna(output_df.at[row_index, column]) for column in metric_columns)
 
 
 def _parse_id_list(raw_value: Any) -> list[str]:
@@ -145,6 +195,9 @@ def run_ragas_evaluation(
     weave_experiment_name: str | None = None,
     weave_log_contexts: bool = True,
     weave_print_call_link: bool = False,
+    rate_limit_max_retries: int = 20,
+    rate_limit_sleep_seconds: float = 10.0,
+    rate_limit_max_sleep_seconds: float = 120.0,
 ) -> tuple[pd.DataFrame, dict[str, float]]:
     """Run RAGAS evaluation from a generated-answer CSV.
     Save detailed scores and return both row-level data and summary means."""
@@ -207,6 +260,9 @@ def run_ragas_evaluation(
         "judge_model": judge_model,
         "judge_embedding_model": judge_embedding_model,
         "max_rows": max_rows,
+        "rate_limit_max_retries": rate_limit_max_retries,
+        "rate_limit_sleep_seconds": rate_limit_sleep_seconds,
+        "rate_limit_max_sleep_seconds": rate_limit_max_sleep_seconds,
     }
 
     for _, row in generated_df.iterrows():
@@ -236,60 +292,111 @@ def run_ragas_evaluation(
         )
 
     print(f"[INFO] {Path(generated_csv_path).name} {len(records)} rows loading complete")
-    ragas_dataset = Dataset.from_list(
-        [
-            {
-                "question": rec["question"],
-                "answer": rec["answer"],
-                "contexts": rec["contexts"],
-                "ground_truth": rec["ground_truth"],
-            }
-            for rec in records
-        ]
-    )
 
     judge_llm = ChatOpenAI(model=judge_model, temperature=0)
     judge_embeddings = _create_judge_embeddings(judge_embedding_model)
     metric_columns = ["answer_relevancy", "faithfulness", "context_precision", "context_recall"]
-    result = evaluate(
-        dataset=ragas_dataset,
-        metrics=[answer_relevancy, faithfulness, context_precision, context_recall],
-        llm=LangchainLLMWrapper(judge_llm),
-        embeddings=LangchainEmbeddingsWrapper(judge_embeddings),
-    )
-    score_df = result.to_pandas()
     output_df = generated_df.reset_index(drop=True).copy()
     record_df = pd.DataFrame(records)
     if "contexts" not in output_df.columns:
         output_df["contexts"] = record_df["contexts"]
     if "ground_truth" not in output_df.columns:
         output_df["ground_truth"] = record_df["ground_truth"]
-    for column in metric_columns:
-        output_df[column] = score_df[column].reset_index(drop=True)
+
+    output_path = Path(output_csv_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists():
+        existing_df = pd.read_csv(output_path, encoding="utf-8-sig")
+        if len(existing_df) == len(output_df):
+            for column in [*metric_columns, "contexts", "ground_truth"]:
+                if column in existing_df.columns:
+                    output_df[column] = existing_df[column]
+            completed_rows = sum(_has_complete_metrics(output_df, idx, metric_columns) for idx in range(len(output_df)))
+            if completed_rows:
+                print(f"[INFO] Resuming from {output_path}: {completed_rows}/{len(output_df)} rows already scored")
+        else:
+            print(
+                f"[WARN] Ignoring existing output with different row count: "
+                f"{output_path} ({len(existing_df)} != {len(output_df)})"
+            )
+
+    ragas_llm = LangchainLLMWrapper(judge_llm)
+    ragas_embeddings = LangchainEmbeddingsWrapper(judge_embeddings)
+    metrics = [answer_relevancy, faithfulness, context_precision, context_recall]
+
+    for row_index, record in enumerate(records):
+        if _has_complete_metrics(output_df, row_index, metric_columns):
+            continue
+
+        row_attempt = 0
+        while True:
+            try:
+                row_dataset = Dataset.from_list(
+                    [
+                        {
+                            "question": record["question"],
+                            "answer": record["answer"],
+                            "contexts": record["contexts"],
+                            "ground_truth": record["ground_truth"],
+                        }
+                    ]
+                )
+                result = evaluate(
+                    dataset=row_dataset,
+                    metrics=metrics,
+                    llm=ragas_llm,
+                    embeddings=ragas_embeddings,
+                    raise_exceptions=True,
+                    batch_size=1,
+                    show_progress=False,
+                )
+                score_row = result.to_pandas().iloc[0]
+                for column in metric_columns:
+                    output_df.at[row_index, column] = score_row[column]
+
+                if log_ragas_case is not None:
+                    case_record = {
+                        **experiment_config,
+                        "row_index": row_index,
+                        "question": record["question"],
+                        "answer": record["answer"],
+                        "ground_truth": record["ground_truth"],
+                        "retrieved_ids": record["retrieved_ids"],
+                        "golden_ids": record["golden_ids"],
+                        **{column: float(score_row[column]) for column in metric_columns},
+                    }
+                    if "question_id" in generated_df.columns:
+                        case_record["question_id"] = str(generated_df.iloc[row_index]["question_id"])
+                    if weave_log_contexts:
+                        case_record["contexts"] = record["contexts"]
+                    log_ragas_case(case_record)
+
+                output_df.to_csv(output_path, index=False, encoding="utf-8-sig")
+                print(f"[INFO] RAGAS row {row_index + 1}/{len(records)} saved")
+                break
+            except Exception as exc:
+                if not _is_rate_limit_error(exc):
+                    raise
+                row_attempt += 1
+                if row_attempt > rate_limit_max_retries:
+                    raise RuntimeError(
+                        f"Rate limit persisted at row {row_index + 1} after {rate_limit_max_retries} retries"
+                    ) from exc
+                retry_hint = _retry_after_seconds(exc)
+                exponential_sleep = rate_limit_sleep_seconds * (2 ** (row_attempt - 1))
+                sleep_seconds = min(rate_limit_max_sleep_seconds, max(exponential_sleep, (retry_hint or 0.0) + 1.0))
+                print(
+                    f"[WARN] Rate limit at row {row_index + 1}/{len(records)} "
+                    f"({row_attempt}/{rate_limit_max_retries}). Sleeping {sleep_seconds:.1f}s then retrying."
+                )
+                time.sleep(sleep_seconds)
+
     summary = {
         "answer_relevancy": float(output_df["answer_relevancy"].mean()),
         "faithfulness": float(output_df["faithfulness"].mean()),
         "context_precision": float(output_df["context_precision"].mean()),
         "context_recall": float(output_df["context_recall"].mean()),
     }
-
-    if log_ragas_case is not None:
-        for index, (record, score_row) in enumerate(zip(records, score_df.to_dict("records"), strict=True)):
-            case_record = {
-                **experiment_config,
-                "row_index": index,
-                "question": record["question"],
-                "answer": record["answer"],
-                "ground_truth": record["ground_truth"],
-                "retrieved_ids": record["retrieved_ids"],
-                "golden_ids": record["golden_ids"],
-                **{column: float(score_row[column]) for column in metric_columns},
-            }
-            if "question_id" in generated_df.columns:
-                case_record["question_id"] = str(generated_df.iloc[index]["question_id"])
-            if weave_log_contexts:
-                case_record["contexts"] = record["contexts"]
-            log_ragas_case(case_record)
 
     if log_ragas_summary is not None:
         log_ragas_summary(
@@ -299,9 +406,6 @@ def run_ragas_evaluation(
                 **{f"avg_{key}": value for key, value in summary.items()},
             }
         )
-
-    output_path = Path(output_csv_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_df.to_csv(output_path, index=False, encoding="utf-8-sig")
 
     if output_summary_path:
@@ -326,6 +430,9 @@ def run_ragas_evaluations(
     weave_experiment_group: str | None = None,
     weave_log_contexts: bool = True,
     weave_print_call_link: bool = False,
+    rate_limit_max_retries: int = 20,
+    rate_limit_sleep_seconds: float = 10.0,
+    rate_limit_max_sleep_seconds: float = 120.0,
 ) -> tuple[dict[str, Path], pd.DataFrame]:
     """Run RAGAS over one or more generated CSV files.
     Write one detail CSV per experiment and a single combined summary CSV."""
@@ -354,6 +461,9 @@ def run_ragas_evaluations(
             weave_experiment_name=experiment_name,
             weave_log_contexts=weave_log_contexts,
             weave_print_call_link=weave_print_call_link,
+            rate_limit_max_retries=rate_limit_max_retries,
+            rate_limit_sleep_seconds=rate_limit_sleep_seconds,
+            rate_limit_max_sleep_seconds=rate_limit_max_sleep_seconds,
         )
 
         detail_outputs[experiment_name] = detail_output_path

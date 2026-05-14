@@ -25,6 +25,9 @@ def main() -> None:
     parser.add_argument("--weave-experiment-name", default=None)
     parser.add_argument("--weave-log-contexts", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--weave-print-call-link", action="store_true")
+    parser.add_argument("--rate-limit-max-retries", type=int, default=20)
+    parser.add_argument("--rate-limit-sleep-seconds", type=float, default=10.0)
+    parser.add_argument("--rate-limit-max-sleep-seconds", type=float, default=120.0)
     args = parser.parse_args()
 
     if len(args.generated_csv) == 1:
@@ -42,6 +45,9 @@ def main() -> None:
             weave_experiment_name=args.weave_experiment_name,
             weave_log_contexts=args.weave_log_contexts,
             weave_print_call_link=args.weave_print_call_link,
+            rate_limit_max_retries=args.rate_limit_max_retries,
+            rate_limit_sleep_seconds=args.rate_limit_sleep_seconds,
+            rate_limit_max_sleep_seconds=args.rate_limit_max_sleep_seconds,
         )
     else:
         detail_outputs, summary_df = run_ragas_evaluations(
@@ -57,6 +63,9 @@ def main() -> None:
             weave_experiment_group=args.weave_experiment_group,
             weave_log_contexts=args.weave_log_contexts,
             weave_print_call_link=args.weave_print_call_link,
+            rate_limit_max_retries=args.rate_limit_max_retries,
+            rate_limit_sleep_seconds=args.rate_limit_sleep_seconds,
+            rate_limit_max_sleep_seconds=args.rate_limit_max_sleep_seconds,
         )
         summary = {
             "answer_relevancy": float(summary_df["answer_relevancy"].mean()),
