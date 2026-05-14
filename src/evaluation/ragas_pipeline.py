@@ -1,18 +1,35 @@
 from __future__ import annotations
 
 import ast
+import logging
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from tqdm.auto import tqdm
 
 from src.common.io import load_json
 
 _DEFAULT_WEAVE_PROJECT = "finance-terms-rag-evaluation"
 _RAGAS_WEAVE_STAGE = "ragas"
 _RAGAS_WEAVE_SCHEMA_VERSION = "ragas_v1"
+_RAGAS_GENERATION_WARNING = "LLM returned 1 generations instead of requested 3"
+
+
+class _RagasGenerationWarningFilter(logging.Filter):
+    """Suppress a noisy RAGAS warning that does not stop evaluation."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return _RAGAS_GENERATION_WARNING not in record.getMessage()
+
+
+def _suppress_ragas_generation_warning() -> None:
+    """Hide RAGAS self-consistency generation-count warnings once per process."""
+    logger = logging.getLogger("ragas.prompt.pydantic_prompt")
+    if any(isinstance(log_filter, _RagasGenerationWarningFilter) for log_filter in logger.filters):
+        return
+    logger.addFilter(_RagasGenerationWarningFilter())
 
 
 def _parse_id_list(raw_value: Any) -> list[str]:
@@ -86,9 +103,11 @@ def _get_required_text(row: pd.Series, candidates: tuple[str, ...], label: str) 
     raise KeyError(f"Generated CSV is missing required {label} column. Tried: {', '.join(candidates)}")
 
 
+@lru_cache(maxsize=4)
 def _create_judge_embeddings(model_name: str):
     """Create embeddings for RAGAS metrics.
-    Use OpenAI for OpenAI model names and HuggingFace for local sentence-transformer names."""
+    Use OpenAI for OpenAI model names and HuggingFace for local sentence-transformer names.
+    Cache the client so repeated experiment loops do not reload the same model weights."""
     if model_name.startswith("text-embedding-"):
         from langchain_openai import OpenAIEmbeddings  # noqa: PLC0415
 
@@ -118,7 +137,8 @@ def run_ragas_evaluation(
     output_csv_path: str | Path,
     output_summary_path: str | Path | None = None,
     judge_model: str = "gpt-4o-mini",
-    judge_embedding_model: str = "text-embedding-3-small",
+    judge_embedding_model: str = "multilingual-e5-large",
+    max_rows: int | None = None,
     use_weave: bool = False,
     weave_project: str | None = None,
     weave_experiment_group: str | None = None,
@@ -128,6 +148,7 @@ def run_ragas_evaluation(
 ) -> tuple[pd.DataFrame, dict[str, float]]:
     """Run RAGAS evaluation from a generated-answer CSV.
     Save detailed scores and return both row-level data and summary means."""
+    _suppress_ragas_generation_warning()
     try:
         from datasets import Dataset  # noqa: PLC0415
         from langchain_openai import ChatOpenAI  # noqa: PLC0415
@@ -139,6 +160,10 @@ def run_ragas_evaluation(
         raise ImportError("RAGAS evaluation dependencies are missing. Run `pip install -r requirements.txt`.") from exc
 
     generated_df = pd.read_csv(generated_csv_path, encoding="utf-8-sig")
+    if max_rows is not None:
+        if max_rows <= 0:
+            raise ValueError("`max_rows` must be a positive integer when provided.")
+        generated_df = generated_df.head(max_rows).copy()
     chunk_lookup = _build_chunk_text_lookup(chunk_json_path)
     records: list[dict[str, Any]] = []
     experiment_name = weave_experiment_name or Path(generated_csv_path).stem
@@ -181,13 +206,10 @@ def run_ragas_evaluation(
         "chunk_json_path": str(chunk_json_path),
         "judge_model": judge_model,
         "judge_embedding_model": judge_embedding_model,
+        "max_rows": max_rows,
     }
 
-    for _, row in tqdm(
-        generated_df.iterrows(),
-        total=len(generated_df),
-        desc=f"RAGAS evaluation [{experiment_name}]",
-    ):
+    for _, row in generated_df.iterrows():
         question = _get_required_text(row, ("query", "question"), "question")
         answer = _get_required_text(row, ("stage_2_generation_answer", "answer"), "answer")
         golden_ids = _parse_id_list(row["golden_ids"] if "golden_ids" in row else row["chunk_id"])
@@ -213,6 +235,7 @@ def run_ragas_evaluation(
             }
         )
 
+    print(f"[INFO] {Path(generated_csv_path).name} {len(records)} rows loading complete")
     ragas_dataset = Dataset.from_list(
         [
             {
@@ -227,15 +250,14 @@ def run_ragas_evaluation(
 
     judge_llm = ChatOpenAI(model=judge_model, temperature=0)
     judge_embeddings = _create_judge_embeddings(judge_embedding_model)
+    metric_columns = ["answer_relevancy", "faithfulness", "context_precision", "context_recall"]
     result = evaluate(
         dataset=ragas_dataset,
         metrics=[answer_relevancy, faithfulness, context_precision, context_recall],
         llm=LangchainLLMWrapper(judge_llm),
         embeddings=LangchainEmbeddingsWrapper(judge_embeddings),
     )
-
     score_df = result.to_pandas()
-    metric_columns = ["answer_relevancy", "faithfulness", "context_precision", "context_recall"]
     output_df = generated_df.reset_index(drop=True).copy()
     record_df = pd.DataFrame(records)
     if "contexts" not in output_df.columns:
@@ -288,3 +310,65 @@ def run_ragas_evaluation(
         pd.DataFrame([summary]).to_csv(summary_path, index=False, encoding="utf-8-sig")
 
     return output_df, summary
+
+
+def run_ragas_evaluations(
+    *,
+    generated_csv_paths: list[str | Path],
+    chunk_json_path: str | Path,
+    output_dir: str | Path,
+    output_summary_path: str | Path,
+    judge_model: str = "gpt-4o-mini",
+    judge_embedding_model: str = "multilingual-e5-large",
+    max_rows: int | None = None,
+    use_weave: bool = False,
+    weave_project: str | None = None,
+    weave_experiment_group: str | None = None,
+    weave_log_contexts: bool = True,
+    weave_print_call_link: bool = False,
+) -> tuple[dict[str, Path], pd.DataFrame]:
+    """Run RAGAS over one or more generated CSV files.
+    Write one detail CSV per experiment and a single combined summary CSV."""
+    output_root = Path(output_dir)
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    detail_outputs: dict[str, Path] = {}
+    summary_rows: list[dict[str, Any]] = []
+
+    for generated_csv_path in generated_csv_paths:
+        generated_path = Path(generated_csv_path)
+        experiment_name = generated_path.stem
+        detail_output_path = output_root / f"{experiment_name}_ragas.csv"
+
+        output_df, summary = run_ragas_evaluation(
+            generated_csv_path=generated_path,
+            chunk_json_path=chunk_json_path,
+            output_csv_path=detail_output_path,
+            output_summary_path=None,
+            judge_model=judge_model,
+            judge_embedding_model=judge_embedding_model,
+            max_rows=max_rows,
+            use_weave=use_weave,
+            weave_project=weave_project,
+            weave_experiment_group=weave_experiment_group,
+            weave_experiment_name=experiment_name,
+            weave_log_contexts=weave_log_contexts,
+            weave_print_call_link=weave_print_call_link,
+        )
+
+        detail_outputs[experiment_name] = detail_output_path
+        summary_rows.append(
+            {
+                "experiment": experiment_name,
+                "rows": len(output_df),
+                **summary,
+                "detail_output_path": str(detail_output_path),
+            }
+        )
+
+    summary_df = pd.DataFrame(summary_rows)
+    summary_path = Path(output_summary_path)
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_df.to_csv(summary_path, index=False, encoding="utf-8-sig")
+
+    return detail_outputs, summary_df
