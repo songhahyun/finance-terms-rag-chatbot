@@ -44,7 +44,7 @@ def validate_answer_language(text: str) -> dict:
         detected_issues.append("contains_long_cjk_ideograph_sequence")
 
     cjk_blocks = _CJK_BLOCK_RE.findall(text)
-    if len(cjk_blocks) >= 2:
+    if len(cjk_blocks) >= 10:
         detected_issues.append("contains_repeated_cjk_ideograph_blocks")
 
     cjk_count = len(_CJK_IDEOGRAPH_RE.findall(text))
