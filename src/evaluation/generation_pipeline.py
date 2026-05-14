@@ -131,6 +131,7 @@ def run_generation_experiment(
     weave_log_prompt: bool = True,
     weave_print_call_link: bool = False,
     max_rows: int | None = None,
+    weave_log_batch_size: int | None = None,
 ) -> pd.DataFrame:
     """Run one stage-wise generation experiment and return per-row result DataFrame.
     Use one fixed answer generator for every query.
@@ -138,6 +139,10 @@ def run_generation_experiment(
     settings = get_settings()
     resolved_dense_model_name = _resolve_dense_model_name(dense_provider, dense_model_name)
     _require_hf_token_for_local(dense_provider)
+    if max_rows is not None and max_rows <= 0:
+        raise ValueError("`max_rows` must be a positive integer when provided.")
+    if weave_log_batch_size is not None and weave_log_batch_size <= 0:
+        raise ValueError("`weave_log_batch_size` must be a positive integer when provided.")
 
     retriever = build_retriever(
         mode=retrieval_mode,
@@ -164,11 +169,11 @@ def run_generation_experiment(
     )
     df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
     if max_rows is not None:
-        if max_rows <= 0:
-            raise ValueError("`max_rows` must be a positive integer when provided.")
         df = df.head(max_rows).copy()
     rows: list[dict[str, Any]] = []
     weave_extras: list[dict[str, Any]] = []
+    pending_weave_rows: list[dict[str, Any]] = []
+    pending_weave_extras: list[dict[str, Any]] = []
 
     log_generation_case = None
     log_generation_summary = None
@@ -220,7 +225,33 @@ def run_generation_experiment(
         "k": k,
         "language": language,
         "max_rows": max_rows,
+        "weave_log_batch_size": weave_log_batch_size,
     }
+
+    def _attach_bertscore(scored_rows: list[dict[str, Any]]) -> None:
+        if not scored_rows:
+            return
+        bert_scores = bertscore_f1(
+            [str(row["stage_2_generation_answer"]) for row in scored_rows],
+            [str(row["ground_truth"]) for row in scored_rows],
+            lang="ko",
+        )
+        for scored_row, bert_score in zip(scored_rows, bert_scores, strict=True):
+            scored_row["bertscore_f1"] = bert_score
+
+    def _log_weave_rows(log_rows: list[dict[str, Any]], log_extras: list[dict[str, Any]]) -> None:
+        if log_generation_case is None:
+            return
+        for result, weave_extra in zip(log_rows, log_extras, strict=True):
+            log_generation_case({**experiment_config, **result, **weave_extra})
+
+    def _flush_weave_batch() -> None:
+        if not pending_weave_rows:
+            return
+        _attach_bertscore(pending_weave_rows)
+        _log_weave_rows(pending_weave_rows, pending_weave_extras)
+        pending_weave_rows.clear()
+        pending_weave_extras.clear()
 
     for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Generation [{experiment_name}]"):
         question_id = str(row["question_id"])
@@ -275,19 +306,22 @@ def run_generation_experiment(
                 weave_extra["stage_2_generation_prompt"] = answer_prompt
             if weave_log_contexts:
                 weave_extra["contexts"] = _serialize_docs(docs)
-            weave_extras.append(weave_extra)
+            if weave_log_batch_size is None:
+                weave_extras.append(weave_extra)
+            else:
+                pending_weave_rows.append(result)
+                pending_weave_extras.append(weave_extra)
+                if len(pending_weave_rows) >= weave_log_batch_size:
+                    _flush_weave_batch()
 
-    bert_scores = bertscore_f1(
-        [str(row["stage_2_generation_answer"]) for row in rows],
-        [str(row["ground_truth"]) for row in rows],
-        lang="ko",
-    )
-    for row, bert_score in zip(rows, bert_scores, strict=True):
-        row["bertscore_f1"] = bert_score
+    if log_generation_case is not None and weave_log_batch_size is not None:
+        _flush_weave_batch()
 
-    if log_generation_case is not None:
-        for result, weave_extra in zip(rows, weave_extras, strict=True):
-            log_generation_case({**experiment_config, **result, **weave_extra})
+    unscored_rows = [row for row in rows if "bertscore_f1" not in row]
+    _attach_bertscore(unscored_rows)
+
+    if log_generation_case is not None and weave_log_batch_size is None:
+        _log_weave_rows(rows, weave_extras)
 
     result_df = pd.DataFrame(rows)
 
