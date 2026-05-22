@@ -4,7 +4,7 @@ import { useAuth } from "@/app/auth-context";
 import { fetchKnowledgeDocuments } from "@/lib/api";
 import type { KnowledgeDocument } from "@/types/api";
 
-const INITIAL_FILTERS = ["전체", "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+const INITIAL_FILTERS = ["전체", "ㄱ", "ㄴ", "ㄷ", "ㄹ", "ㅁ", "ㅂ", "ㅅ", "ㅇ", "ㅈ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ", "abc"];
 const CHO = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
 const INITIAL_GROUP_MAP: Record<string, string> = {
   ㄲ: "ㄱ",
@@ -30,8 +30,9 @@ export function getKoreanInitialConsonant(value: string): string {
   return CHO[index] ?? "";
 }
 
-function getInitialGroup(value: string): string {
+export function getKnowledgeDocumentFilterGroup(value: string): string {
   const initial = getKoreanInitialConsonant(value);
+  if (/^[A-Z]$/.test(initial)) return "abc";
   return INITIAL_GROUP_MAP[initial] ?? initial;
 }
 
@@ -66,7 +67,7 @@ export function KnowledgeDocumentsPage(): JSX.Element {
     return documents
       .filter((document) => {
         if (initialFilter === "전체") return true;
-        return getInitialGroup(document.term) === initialFilter;
+        return getKnowledgeDocumentFilterGroup(document.term) === initialFilter;
       })
       .filter((document) => {
         if (!normalizedSearch) return true;
