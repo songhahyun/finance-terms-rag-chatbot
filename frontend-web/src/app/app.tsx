@@ -6,6 +6,7 @@ import { AdminDashboardPage } from "@/pages/admin-dashboard-page";
 import { ChatPage } from "@/pages/chat-page";
 import { KnowledgeDocumentsPage } from "@/pages/knowledge-documents-page";
 import { LoginPage } from "@/pages/login-page";
+import { SettingsPage } from "@/pages/settings-page";
 
 export function App(): JSX.Element {
   const { isAuthenticated } = useAuth();
@@ -20,6 +21,7 @@ export function App(): JSX.Element {
           <Route path="/knowledge-documents" element={<KnowledgeDocumentsPage />} />
           <Route element={<RoleRoute allowedRoles={["admin"]} />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
       </Route>

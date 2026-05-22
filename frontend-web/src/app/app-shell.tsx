@@ -74,7 +74,7 @@ export function AppShell(): JSX.Element {
                 icon={<FileText className="h-4 w-4" />}
                 isActive={location.pathname.startsWith("/knowledge-documents")}
               />
-              <FakeItem label="설정" icon={<Settings className="h-4 w-4" />} />
+              {isAdmin && <NavItem to="/settings" label="설정" icon={<Settings className="h-4 w-4" />} isActive={location.pathname.startsWith("/settings")} />}
             </nav>
 
             <div className="mt-6 border-t border-[#e6ebf1] pt-4">
@@ -124,14 +124,5 @@ function NavItem({ to, label, icon, isActive }: { to: string; label: string; ico
       {icon}
       <span>{label}</span>
     </NavLink>
-  );
-}
-
-function FakeItem({ label, icon }: { label: string; icon: JSX.Element }): JSX.Element {
-  return (
-    <button type="button" className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-[#4f5f78] hover:bg-[#f0f4fb]">
-      {icon}
-      <span>{label}</span>
-    </button>
   );
 }
