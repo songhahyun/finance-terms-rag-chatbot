@@ -28,7 +28,7 @@ class InMemorySession:
         with self._lock:
             return self._users.get(username)
 
-    def create_user(self, username: str, password: str, role: str) -> UserRecord:
+    def create_user(self, username: str, email: str, password: str, role: str) -> UserRecord:
         """Create a new in-memory user record.
         Raise ValueError when the username already exists."""
         with self._lock:
@@ -36,6 +36,7 @@ class InMemorySession:
                 raise ValueError("Username already exists.")
             user = UserRecord(
                 username=username,
+                email=email,
                 password=password,
                 roles=(role,),
             )

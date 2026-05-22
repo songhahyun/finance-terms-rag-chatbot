@@ -7,5 +7,6 @@ from dataclasses import dataclass, field
 class UserRecord:
     username: str
     password: str
+    email: str = ""
     roles: tuple[str, ...] = field(default_factory=tuple)
     is_active: bool = True

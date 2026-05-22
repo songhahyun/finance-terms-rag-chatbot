@@ -1,22 +1,25 @@
 ﻿import { useState, type FormEvent } from "react";
-import { Eye, EyeOff, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginPage(): JSX.Element {
   const { login, signup } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState("admin");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("admin123");
   const [role, setRole] = useState<"user" | "admin">("user");
   const [isSignup, setIsSignup] = useState(false);
   const [rememberId, setRememberId] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-  const [resetAccount, setResetAccount] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,10 +30,22 @@ export function LoginPage(): JSX.Element {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    if (isSignup) {
+      const normalizedEmail = email.trim();
+      if (!normalizedEmail) {
+        setError("이메일을 입력해주세요.");
+        return;
+      }
+      if (!EMAIL_PATTERN.test(normalizedEmail)) {
+        setError("올바른 이메일 형식으로 입력해주세요.");
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       if (isSignup) {
-        await signup({ username, password, role });
+        await signup({ username, email: email.trim(), password, role });
       } else {
         await login({ username, password });
       }
@@ -43,7 +58,7 @@ export function LoginPage(): JSX.Element {
   };
 
   const openForgotPassword = () => {
-    setResetAccount("");
+    setResetEmail("");
     setResetError(null);
     setResetSuccess(false);
     setIsForgotPasswordOpen(true);
@@ -57,9 +72,15 @@ export function LoginPage(): JSX.Element {
 
   const onForgotPasswordSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!resetAccount.trim()) {
+    const normalizedEmail = resetEmail.trim();
+    if (!normalizedEmail) {
       setResetSuccess(false);
-      setResetError("계정을 입력해주세요.");
+      setResetError("이메일을 입력해주세요.");
+      return;
+    }
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      setResetSuccess(false);
+      setResetError("올바른 이메일 형식으로 입력해주세요.");
       return;
     }
 
@@ -91,6 +112,21 @@ export function LoginPage(): JSX.Element {
                   required
                 />
               </div>
+
+              {isSignup && (
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa6b6]" />
+                  <Input
+                    type="email"
+                    className="h-12 rounded-lg border-[#dce3ec] pl-11"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="이메일을 입력하세요"
+                    required
+                  />
+                </div>
+              )}
+
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa6b6]" />
                 <Input
@@ -165,22 +201,23 @@ export function LoginPage(): JSX.Element {
             <h2 className="text-2xl font-extrabold text-[#0f172a]">비밀번호 찾기</h2>
             <form className="mt-6 space-y-4" onSubmit={onForgotPasswordSubmit}>
               <div>
-                <label htmlFor="reset-account" className="mb-2 block text-sm font-semibold text-[#334155]">
-                  계정
+                <label htmlFor="reset-email" className="mb-2 block text-sm font-semibold text-[#334155]">
+                  이메일
                 </label>
                 <Input
-                  id="reset-account"
+                  id="reset-email"
+                  type="email"
                   className="h-12 rounded-lg border-[#dce3ec]"
-                  value={resetAccount}
-                  onChange={(event) => setResetAccount(event.target.value)}
-                  placeholder="아이디를 입력하세요"
+                  value={resetEmail}
+                  onChange={(event) => setResetEmail(event.target.value)}
+                  placeholder="이메일을 입력하세요"
                 />
               </div>
 
               {resetError && <p className="text-sm font-medium text-[#ef4444]">{resetError}</p>}
               {resetSuccess && (
                 <p className="rounded-lg bg-[#eef6ff] px-3 py-2 text-sm font-medium text-[#2162ff]">
-                  입력하신 계정으로 비밀번호 재설정 안내를 보냈습니다.
+                  입력하신 이메일로 비밀번호 재설정 안내를 보냈습니다.
                 </p>
               )}
 

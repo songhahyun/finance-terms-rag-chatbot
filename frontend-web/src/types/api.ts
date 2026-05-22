@@ -11,6 +11,7 @@ export interface LoginRequest {
 }
 
 export interface SignupRequest extends LoginRequest {
+  email: string;
   role: UserRole;
 }
 
