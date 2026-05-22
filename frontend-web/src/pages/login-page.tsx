@@ -15,6 +15,10 @@ export function LoginPage(): JSX.Element {
   const [isSignup, setIsSignup] = useState(false);
   const [rememberId, setRememberId] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [resetAccount, setResetAccount] = useState("");
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -36,6 +40,31 @@ export function LoginPage(): JSX.Element {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const openForgotPassword = () => {
+    setResetAccount("");
+    setResetError(null);
+    setResetSuccess(false);
+    setIsForgotPasswordOpen(true);
+  };
+
+  const closeForgotPassword = () => {
+    setIsForgotPasswordOpen(false);
+    setResetError(null);
+    setResetSuccess(false);
+  };
+
+  const onForgotPasswordSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetAccount.trim()) {
+      setResetSuccess(false);
+      setResetError("계정을 입력해주세요.");
+      return;
+    }
+
+    setResetError(null);
+    setResetSuccess(true);
   };
 
   return (
@@ -105,7 +134,9 @@ export function LoginPage(): JSX.Element {
                 <input type="checkbox" checked={rememberId} onChange={(e) => setRememberId(e.target.checked)} className="h-4 w-4 rounded border-[#d0d8e4]" />
                 아이디 기억하기
               </label>
-              <button type="button" className="font-semibold text-[#3567ff]">비밀번호 찾기</button>
+              <button type="button" className="font-semibold text-[#3567ff]" onClick={openForgotPassword}>
+                비밀번호 찾기
+              </button>
             </div>
 
             <div className="mt-5 text-sm text-[#7b889b]">
@@ -127,6 +158,46 @@ export function LoginPage(): JSX.Element {
           />
         </section>
       </div>
+
+      {isForgotPasswordOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/40 p-4">
+          <div className="w-full max-w-[420px] rounded-2xl border border-[#dbe2ea] bg-white p-6 shadow-xl">
+            <h2 className="text-2xl font-extrabold text-[#0f172a]">비밀번호 찾기</h2>
+            <form className="mt-6 space-y-4" onSubmit={onForgotPasswordSubmit}>
+              <div>
+                <label htmlFor="reset-account" className="mb-2 block text-sm font-semibold text-[#334155]">
+                  계정
+                </label>
+                <Input
+                  id="reset-account"
+                  className="h-12 rounded-lg border-[#dce3ec]"
+                  value={resetAccount}
+                  onChange={(event) => setResetAccount(event.target.value)}
+                  placeholder="아이디를 입력하세요"
+                />
+              </div>
+
+              {resetError && <p className="text-sm font-medium text-[#ef4444]">{resetError}</p>}
+              {resetSuccess && (
+                <p className="rounded-lg bg-[#eef6ff] px-3 py-2 text-sm font-medium text-[#2162ff]">
+                  입력하신 계정으로 비밀번호 재설정 안내를 보냈습니다.
+                </p>
+              )}
+
+              <Button type="submit" className="h-12 w-full rounded-lg bg-[#2162ff] text-base font-bold hover:bg-[#1e56e8]">
+                재설정 링크 보내기
+              </Button>
+              <button
+                type="button"
+                className="h-11 w-full rounded-lg border border-[#dce3ec] text-sm font-semibold text-[#64748b] hover:bg-[#f8fafc]"
+                onClick={closeForgotPassword}
+              >
+                로그인으로 돌아가기
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
