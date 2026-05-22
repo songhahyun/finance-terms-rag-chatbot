@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bot, ChevronDown, FileText, LayoutDashboard, LogOut, MessageSquare, Plus, Settings } from "lucide-react";
+import { Bot, FileText, LayoutDashboard, LogOut, MessageSquare, Plus, Settings } from "lucide-react";
 import { useAuth } from "@/app/auth-context";
 import { Button } from "@/components/ui/button";
 import { CONVERSATIONS_CHANGED_EVENT, loadConversations, type Conversation } from "@/lib/conversations";
@@ -46,7 +46,6 @@ export function AppShell(): JSX.Element {
           <div className="flex items-center gap-3 text-sm font-semibold text-[#4f5f78]">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#e9eef6] text-[#64748b]">유</span>
             <span>{user?.username} 님</span>
-            <ChevronDown className="h-4 w-4" />
             <Button variant="ghost" size="sm" onClick={handleLogout} className="ml-1 text-[#4f5f78]">
               <LogOut className="mr-1 h-4 w-4" /> 로그아웃
             </Button>
