@@ -68,7 +68,12 @@ export function AppShell(): JSX.Element {
                   isActive={location.pathname.startsWith("/admin")}
                 />
               )}
-              <FakeItem label="지식 문서" icon={<FileText className="h-4 w-4" />} />
+              <NavItem
+                to="/knowledge-documents"
+                label="지식 문서"
+                icon={<FileText className="h-4 w-4" />}
+                isActive={location.pathname.startsWith("/knowledge-documents")}
+              />
               <FakeItem label="설정" icon={<Settings className="h-4 w-4" />} />
             </nav>
 

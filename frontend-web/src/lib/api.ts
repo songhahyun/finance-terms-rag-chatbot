@@ -1,6 +1,7 @@
 import type {
   ChatRequest,
   ChatResponse,
+  KnowledgeDocumentsResponse,
   LoginRequest,
   MonitorRecentResponse,
   MonitorSummaryResponse,
@@ -75,6 +76,12 @@ export async function fetchMonitorSummary(token: string): Promise<MonitorSummary
 
 export async function fetchMonitorRecent(token: string, limit = 20): Promise<MonitorRecentResponse> {
   return request<MonitorRecentResponse>(`/monitor/recent?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function fetchKnowledgeDocuments(token: string): Promise<KnowledgeDocumentsResponse> {
+  return request<KnowledgeDocumentsResponse>("/knowledge-documents", {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
