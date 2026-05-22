@@ -1,5 +1,5 @@
 ﻿import { useState, type FormEvent } from "react";
-import { EyeOff, Lock, User } from "lucide-react";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/app/auth-context";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ export function LoginPage(): JSX.Element {
   const [role, setRole] = useState<"user" | "admin">("user");
   const [isSignup, setIsSignup] = useState(false);
   const [rememberId, setRememberId] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -64,14 +65,21 @@ export function LoginPage(): JSX.Element {
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa6b6]" />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   className="h-12 rounded-lg border-[#dce3ec] pl-11 pr-11"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="비밀번호를 입력하세요"
                   required
                 />
-                <EyeOff className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa6b6]" />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                  className="absolute right-4 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center text-[#9aa6b6] transition hover:text-[#64748b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2162ff]"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                </button>
               </div>
 
               {isSignup && (
