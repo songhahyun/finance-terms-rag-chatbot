@@ -20,7 +20,8 @@ export function App(): JSX.Element {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/knowledge-documents" element={<KnowledgeDocumentsPage />} />
           <Route element={<RoleRoute allowedRoles={["admin"]} />}>
-            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>

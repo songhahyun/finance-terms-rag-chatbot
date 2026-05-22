@@ -62,10 +62,10 @@ export function AppShell(): JSX.Element {
               <NavItem to="/chat" label="대화" icon={<MessageSquare className="h-4 w-4" />} isActive={location.pathname.startsWith("/chat")} />
               {isAdmin && (
                 <NavItem
-                  to="/admin"
+                  to="/dashboard"
                   label="대시보드"
                   icon={<LayoutDashboard className="h-4 w-4" />}
-                  isActive={location.pathname.startsWith("/admin")}
+                  isActive={location.pathname.startsWith("/dashboard")}
                 />
               )}
               <NavItem
