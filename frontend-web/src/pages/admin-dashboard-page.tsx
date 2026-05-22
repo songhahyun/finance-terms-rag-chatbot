@@ -97,32 +97,36 @@ export function AdminDashboardPage(): JSX.Element {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="h-[300px] rounded-xl border border-[#e6ebf1] bg-white p-4">
+        <div className="min-h-[280px] rounded-xl border border-[#e6ebf1] bg-white p-4 pb-8 lg:min-h-[320px]">
           <p className="mb-2 text-sm font-bold text-[#334155]">스테이지별 평균 처리시간</p>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={summary?.stage_summary ?? []}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="avg_elapsed_sec" name="평균 처리시간(초)" fill="#2162ff" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[230px] lg:h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={summary?.stage_summary ?? []} margin={{ top: 16, right: 24, bottom: 40, left: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="avg_elapsed_sec" name="평균 처리시간(초)" fill="#2162ff" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        <div className="h-[300px] rounded-xl border border-[#e6ebf1] bg-white p-4">
+        <div className="min-h-[280px] rounded-xl border border-[#e6ebf1] bg-white p-4 pb-8 lg:min-h-[320px]">
           <p className="mb-2 text-sm font-bold text-[#334155]">스테이지별 성공률</p>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={summary?.stage_summary ?? []}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="success_rate" name="성공률(%)" fill="#22c55e" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="h-[230px] lg:h-[260px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={summary?.stage_summary ?? []} margin={{ top: 16, right: 24, bottom: 40, left: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} domain={[0, 100]} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="success_rate" name="성공률(%)" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>
