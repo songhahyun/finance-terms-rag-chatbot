@@ -45,12 +45,6 @@ export function AdminDashboardPage(): JSX.Element {
       <div className="rounded-xl border border-[#e6ebf1] bg-white p-5">
         <h1 className="text-[30px] font-extrabold tracking-tight text-[#111827]">대시보드</h1>
 
-        <div className="mt-4 flex flex-wrap items-center gap-6 border-b border-[#e8edf4] pb-3 text-sm font-semibold">
-          <button className="border-b-2 border-[#2162ff] pb-2 text-[#2162ff]">채팅 로그</button>
-          <button className="pb-2 text-[#6f7f95]">사용 통계</button>
-          <button className="pb-2 text-[#6f7f95]">지식 문서 통계</button>
-        </div>
-
         <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_1fr_1.3fr_auto]">
           <FilterBox icon={<CalendarDays className="h-4 w-4 text-[#9aabc0]" />} text="2024-05-20   ~   2024-05-27" />
           <FilterBox text="전체 상태" />
