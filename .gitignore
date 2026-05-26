@@ -6,13 +6,24 @@
 
 #virtual env
 venv/
-.env/
 .venv/
 .env
+.env.*
+!.env.example
+!.env.deploy.example
+*.key
+*.pem
+*.secret
 
 #logs
 logs/
 *.log
+
+#local databases / generated vector stores
+*.sqlite3
+*.db
+chroma_local/
+chroma_openai/
 
 #checkpoints / model weights
 checkpoints/
