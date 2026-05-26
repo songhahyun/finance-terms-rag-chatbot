@@ -34,12 +34,13 @@ class OllamaGenerator:
         *,
         stream: bool = False,
         on_chunk: Callable[[str], None] | None = None,
+        options: dict[str, float | int] | None = None,
     ) -> str:
         """Generate text from a prompt with optional streaming.
         Delegate either to the normal or streaming client method."""
         if stream:
-            return self.client.generate_stream(prompt, on_chunk=on_chunk)
-        return self.client.generate(prompt)
+            return self.client.generate_stream(prompt, on_chunk=on_chunk, options=options)
+        return self.client.generate(prompt, options=options)
 
 
 class LangChainGenerator:

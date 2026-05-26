@@ -33,6 +33,7 @@ def signup(request: SignUpRequest) -> TokenResponse:
     try:
         user = get_db_session().create_user(
             username=request.username,
+            email=request.email,
             password=request.password,
             role=request.role,
         )

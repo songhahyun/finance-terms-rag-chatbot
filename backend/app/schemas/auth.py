@@ -10,6 +10,7 @@ class LoginRequest(BaseModel):
 
 class SignUpRequest(BaseModel):
     username: str = Field(..., min_length=3)
+    email: str = Field(..., min_length=1, pattern=r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
     password: str = Field(..., min_length=4)
     role: str = Field(default="user", pattern="^(admin|user)$")
 

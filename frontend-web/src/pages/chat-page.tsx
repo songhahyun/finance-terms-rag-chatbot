@@ -1,21 +1,36 @@
-﻿import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bot, FileText, SendHorizontal, UserCircle2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/app/auth-context";
+import {
+  createConversationId,
+  createConversationTitle,
+  loadConversations,
+  saveConversations,
+  type ChatMessage,
+  type Conversation,
+} from "@/lib/conversations";
 import { postChat } from "@/lib/api";
-import type { ChatResponse } from "@/types/api";
 import { Button } from "@/components/ui/button";
-
-interface ChatHistoryItem {
-  question: string;
-  response: ChatResponse;
-}
 
 export function ChatPage(): JSX.Element {
   const { token } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const selectedConversationId = searchParams.get("conversationId");
   const [question, setQuestion] = useState("");
-  const [history, setHistory] = useState<ChatHistoryItem[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedConversation = useMemo(
+    () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
+    [conversations, selectedConversationId],
+  );
+
+  useEffect(() => {
+    setConversations(loadConversations());
+  }, [selectedConversationId]);
 
   const ask = async () => {
     if (!token || !question.trim()) return;
@@ -24,7 +39,42 @@ export function ChatPage(): JSX.Element {
     setError(null);
     try {
       const response = await postChat({ question: asked, mode: "hybrid", k: 5, language: "ko" }, token);
-      setHistory((prev) => [{ question: asked, response }, ...prev]);
+      const now = new Date().toISOString();
+      const conversationId = selectedConversation?.id ?? createConversationId();
+      const userMessage: ChatMessage = {
+        id: createConversationId(),
+        role: "user",
+        content: asked,
+        createdAt: now,
+      };
+      const assistantMessage: ChatMessage = {
+        id: createConversationId(),
+        role: "assistant",
+        content: response.answer,
+        createdAt: now,
+        sources: response.sources,
+      };
+      const nextConversation: Conversation = selectedConversation
+        ? {
+            ...selectedConversation,
+            messages: [...selectedConversation.messages, userMessage, assistantMessage],
+            updatedAt: now,
+          }
+        : {
+            id: conversationId,
+            title: createConversationTitle(asked),
+            messages: [userMessage, assistantMessage],
+            createdAt: now,
+            updatedAt: now,
+          };
+      const nextConversations = saveConversations([
+        nextConversation,
+        ...conversations.filter((conversation) => conversation.id !== conversationId),
+      ]);
+      setConversations(nextConversations);
+      if (!selectedConversation) {
+        navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`, { replace: true });
+      }
       setQuestion("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "답변 생성에 실패했습니다.");
@@ -33,43 +83,49 @@ export function ChatPage(): JSX.Element {
     }
   };
 
-  const latest = history[0];
+  const messages = selectedConversation?.messages ?? [];
 
   return (
     <div className="flex h-full min-h-[72vh] flex-col rounded-xl border border-[#e6ebf1] bg-white">
       <div className="border-b border-[#e6ebf1] px-5 py-4">
-        <h1 className="text-2xl font-extrabold text-[#111827]">{latest?.question ?? "새 대화"}</h1>
-        <p className="mt-1 text-xs text-[#8a97aa]">{new Date().toLocaleString()}</p>
+        <h1 className="text-2xl font-extrabold text-[#111827]">{selectedConversation?.title ?? "새 대화"}</h1>
+        <p className="mt-1 text-xs text-[#8a97aa]">
+          {selectedConversation ? new Date(selectedConversation.updatedAt).toLocaleString() : new Date().toLocaleString()}
+        </p>
       </div>
 
       <div className="flex-1 space-y-5 overflow-auto p-5">
-        {latest ? (
-          <>
-            <div className="flex justify-end gap-3">
-              <div className="max-w-[70%] rounded-xl bg-[#2b6cff] px-4 py-3 text-sm font-medium text-white shadow-sm">{latest.question}</div>
-              <UserCircle2 className="mt-1 h-9 w-9 text-[#9aa8be]" />
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#0b4476] text-white">
-                <Bot className="h-5 w-5" />
+        {messages.length > 0 ? (
+          messages.map((message) =>
+            message.role === "user" ? (
+              <div key={message.id} className="flex justify-end gap-3">
+                <div className="max-w-[70%] rounded-xl bg-[#2b6cff] px-4 py-3 text-sm font-medium text-white shadow-sm">{message.content}</div>
+                <UserCircle2 className="mt-1 h-9 w-9 text-[#9aa8be]" />
               </div>
-              <div className="w-full rounded-xl border border-[#dfe5ed] bg-white">
-                <div className="whitespace-pre-wrap border-b border-[#ecf0f5] px-4 py-4 text-[15px] leading-7 text-[#334155]">{latest.response.answer}</div>
-                <div className="px-4 py-3">
-                  <p className="mb-2 text-sm font-bold text-[#4f5f78]">참고 문서 ({latest.response.sources.length})</p>
-                  <div className="space-y-1">
-                    {latest.response.sources.slice(0, 3).map((source, idx) => (
-                      <div key={`${source.chunk_id ?? "na"}-${idx}`} className="flex items-center gap-2 text-sm text-[#5f6f84]">
-                        <FileText className="h-4 w-4" />
-                        <span className="truncate">{source.source ?? "Unknown source"}</span>
+            ) : (
+              <div key={message.id} className="flex items-start gap-3">
+                <div className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#0b4476] text-white">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div className="w-full rounded-xl border border-[#dfe5ed] bg-white">
+                  <div className="whitespace-pre-wrap border-b border-[#ecf0f5] px-4 py-4 text-[15px] leading-7 text-[#334155]">{message.content}</div>
+                  {message.sources && (
+                    <div className="px-4 py-3">
+                      <p className="mb-2 text-sm font-bold text-[#4f5f78]">참고 문서 ({message.sources.length})</p>
+                      <div className="space-y-1">
+                        {message.sources.slice(0, 3).map((source, idx) => (
+                          <div key={`${source.chunk_id ?? "na"}-${idx}`} className="flex items-center gap-2 text-sm text-[#5f6f84]">
+                            <FileText className="h-4 w-4" />
+                            <span className="truncate">{source.source ?? "Unknown source"}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          </>
+            ),
+          )
         ) : (
           <div className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-dashed border-[#dbe2ec] bg-[#f9fbff] text-sm text-[#8a97aa]">
             질문을 입력하면 대화가 시작됩니다.

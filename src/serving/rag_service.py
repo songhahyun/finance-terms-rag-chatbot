@@ -81,6 +81,8 @@ class RAGService:
         return {
             "question": question,
             "answer": result.get("answer", ""),
+            "regeneration_count": result.get("regeneration_count", 0),
+            "language_validation": result.get("language_validation"),
             "retrieved_ids": result.get("retrieved_ids", []),
             "sources": sources,
             "monitoring": result.get("monitoring"),

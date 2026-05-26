@@ -8,7 +8,14 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 from src.common.config import get_settings
-from src.evaluation.metrics import hit_score, measure_retrieval_latency, mrr_score, parse_golden_ids, recall_score
+from src.evaluation.metrics import (
+    bertscore_f1,
+    hit_score,
+    measure_retrieval_latency,
+    mrr_score,
+    parse_golden_ids,
+    recall_score,
+)
 from src.generation.context import build_context
 from src.generation.llm import OllamaGenerator
 from src.generation.rag_pipeline import RAGPipeline
@@ -16,6 +23,9 @@ from src.retrieval.factory import build_retriever
 
 
 _LOCAL_HF_MODEL_NAME = "BAAI/bge-m3"
+_DEFAULT_WEAVE_PROJECT = "finance-terms-rag-evaluation"
+_GENERATION_WEAVE_STAGE = "generation"
+_GENERATION_WEAVE_SCHEMA_VERSION = "generation_v1"
 
 
 def _resolve_dense_model_name(provider: str | None, model_name: str | None) -> str:
@@ -120,6 +130,8 @@ def run_generation_experiment(
     weave_log_contexts: bool = True,
     weave_log_prompt: bool = True,
     weave_print_call_link: bool = False,
+    max_rows: int | None = None,
+    weave_log_batch_size: int | None = None,
 ) -> pd.DataFrame:
     """Run one stage-wise generation experiment and return per-row result DataFrame.
     Use one fixed answer generator for every query.
@@ -127,6 +139,10 @@ def run_generation_experiment(
     settings = get_settings()
     resolved_dense_model_name = _resolve_dense_model_name(dense_provider, dense_model_name)
     _require_hf_token_for_local(dense_provider)
+    if max_rows is not None and max_rows <= 0:
+        raise ValueError("`max_rows` must be a positive integer when provided.")
+    if weave_log_batch_size is not None and weave_log_batch_size <= 0:
+        raise ValueError("`weave_log_batch_size` must be a positive integer when provided.")
 
     retriever = build_retriever(
         mode=retrieval_mode,
@@ -152,14 +168,19 @@ def run_generation_experiment(
         generator=generator,
     )
     df = pd.read_csv(eval_csv_path, encoding="utf-8-sig")
+    if max_rows is not None:
+        df = df.head(max_rows).copy()
     rows: list[dict[str, Any]] = []
+    weave_extras: list[dict[str, Any]] = []
+    pending_weave_rows: list[dict[str, Any]] = []
+    pending_weave_extras: list[dict[str, Any]] = []
 
     log_generation_case = None
     log_generation_summary = None
     if use_weave:
         weave = _load_weave()
         weave.init(
-            weave_project or os.getenv("WEAVE_PROJECT", "finance-terms-rag-generation"),
+            weave_project or os.getenv("WEAVE_PROJECT", _DEFAULT_WEAVE_PROJECT),
             settings={
                 "print_call_link": weave_print_call_link,
                 "implicitly_patch_integrations": False,
@@ -167,6 +188,8 @@ def run_generation_experiment(
             attributes={
                 "experiment_group": weave_experiment_group,
                 "experiment": experiment_name,
+                "stage": _GENERATION_WEAVE_STAGE,
+                "schema_version": _GENERATION_WEAVE_SCHEMA_VERSION,
             },
         )
 
@@ -182,6 +205,8 @@ def run_generation_experiment(
         log_generation_summary = _log_generation_summary
 
     experiment_config = {
+        "stage": _GENERATION_WEAVE_STAGE,
+        "schema_version": _GENERATION_WEAVE_SCHEMA_VERSION,
         "experiment_group": weave_experiment_group,
         "experiment": experiment_name,
         "retrieval_mode": retrieval_mode,
@@ -199,23 +224,52 @@ def run_generation_experiment(
         "ollama_keep_alive": settings.ollama_keep_alive,
         "k": k,
         "language": language,
+        "max_rows": max_rows,
+        "weave_log_batch_size": weave_log_batch_size,
     }
+
+    def _attach_bertscore(scored_rows: list[dict[str, Any]]) -> None:
+        if not scored_rows:
+            return
+        bert_scores = bertscore_f1(
+            [str(row["stage_2_generation_answer"]) for row in scored_rows],
+            [str(row["ground_truth"]) for row in scored_rows],
+            lang="ko",
+        )
+        for scored_row, bert_score in zip(scored_rows, bert_scores, strict=True):
+            scored_row["bertscore_f1"] = bert_score
+
+    def _log_weave_rows(log_rows: list[dict[str, Any]], log_extras: list[dict[str, Any]]) -> None:
+        if log_generation_case is None:
+            return
+        for result, weave_extra in zip(log_rows, log_extras, strict=True):
+            log_generation_case({**experiment_config, **result, **weave_extra})
+
+    def _flush_weave_batch() -> None:
+        if not pending_weave_rows:
+            return
+        _attach_bertscore(pending_weave_rows)
+        _log_weave_rows(pending_weave_rows, pending_weave_extras)
+        pending_weave_rows.clear()
+        pending_weave_extras.clear()
 
     for _, row in tqdm(df.iterrows(), total=len(df), desc=f"Generation [{experiment_name}]"):
         question_id = str(row["question_id"])
         query = str(row["query"])
         golden_ids = parse_golden_ids(row["chunk_id"])
+        ground_truth = "" if pd.isna(row.get("ground_truth", "")) else str(row.get("ground_truth", ""))
 
         docs, retrieval_latencies = _measure_generation_retrieval_stages(rag.retriever, query, retrieval_mode)
         retrieved_ids = [doc.metadata.get("chunk_id") for doc in docs]
 
         context = build_context(docs)
         answer_prompt = rag._build_answer_prompt(query, context, language=language)
-        stage_2_generation_answer, stage_2_generation_latency_sec = measure_retrieval_latency(
-            rag._generate_text,
-            rag.generator,
+        stage_2_generation_result, stage_2_generation_latency_sec = measure_retrieval_latency(
+            rag._generate_validated_answer_result,
             answer_prompt,
         )
+        stage_2_language_validation = stage_2_generation_result["language_validation"]
+        stage_2_generation_answer = stage_2_generation_result["answer"]
 
         total_retrieval_latency_sec = sum(retrieval_latencies.values())
         total_latency_sec = total_retrieval_latency_sec + stage_2_generation_latency_sec
@@ -228,6 +282,7 @@ def run_generation_experiment(
             "dense_collection_name": dense_collection_name,
             "question_id": question_id,
             "query": query,
+            "ground_truth": ground_truth,
             "golden_ids": golden_ids,
             "retrieved_ids": retrieved_ids,
             "hit": hit_score(retrieved_ids, golden_ids),
@@ -236,18 +291,37 @@ def run_generation_experiment(
             **retrieval_latencies,
             "stage_1_retrieval_total_latency_sec": total_retrieval_latency_sec,
             "stage_2_generation_answer": stage_2_generation_answer,
+            "stage_2_language_validation_passed": stage_2_language_validation["is_valid"],
+            "stage_2_language_validation_reason": stage_2_language_validation["reason"],
+            "stage_2_language_validation_issues": stage_2_language_validation["detected_issues"],
+            "stage_2_regeneration_count": stage_2_language_validation["regeneration_count"],
             "stage_2_generation_latency_sec": stage_2_generation_latency_sec,
             "total_latency_sec": total_latency_sec,
         }
         rows.append(result)
 
         if log_generation_case is not None:
-            weave_record = {**experiment_config, **result}
+            weave_extra = {}
             if weave_log_prompt:
-                weave_record["stage_2_generation_prompt"] = answer_prompt
+                weave_extra["stage_2_generation_prompt"] = answer_prompt
             if weave_log_contexts:
-                weave_record["contexts"] = _serialize_docs(docs)
-            log_generation_case(weave_record)
+                weave_extra["contexts"] = _serialize_docs(docs)
+            if weave_log_batch_size is None:
+                weave_extras.append(weave_extra)
+            else:
+                pending_weave_rows.append(result)
+                pending_weave_extras.append(weave_extra)
+                if len(pending_weave_rows) >= weave_log_batch_size:
+                    _flush_weave_batch()
+
+    if log_generation_case is not None and weave_log_batch_size is not None:
+        _flush_weave_batch()
+
+    unscored_rows = [row for row in rows if "bertscore_f1" not in row]
+    _attach_bertscore(unscored_rows)
+
+    if log_generation_case is not None and weave_log_batch_size is None:
+        _log_weave_rows(rows, weave_extras)
 
     result_df = pd.DataFrame(rows)
 
@@ -258,6 +332,8 @@ def run_generation_experiment(
 
     avg_recall = float(result_df["recall"].mean()) if not result_df.empty else 0.0
     avg_mrr = float(result_df["mrr"].mean()) if not result_df.empty else 0.0
+    avg_bertscore_f1 = float(result_df["bertscore_f1"].mean()) if not result_df.empty else 0.0
+    avg_regeneration_count = float(result_df["stage_2_regeneration_count"].mean()) if not result_df.empty else 0.0
     avg_total_latency = float(result_df["total_latency_sec"].mean()) if not result_df.empty else 0.0
     if log_generation_summary is not None:
         summary = {
@@ -266,6 +342,8 @@ def run_generation_experiment(
             "avg_hit": float(result_df["hit"].mean()) if not result_df.empty else 0.0,
             "avg_recall": avg_recall,
             "avg_mrr": avg_mrr,
+            "avg_bertscore_f1": avg_bertscore_f1,
+            "avg_stage_2_regeneration_count": avg_regeneration_count,
             "avg_stage_1_retrieval_total_latency_sec": (
                 float(result_df["stage_1_retrieval_total_latency_sec"].mean()) if not result_df.empty else 0.0
             ),
@@ -285,6 +363,9 @@ def run_generation_experiment(
         }
         log_generation_summary(summary)
     print(
-        f"[{experiment_name}] recall={avg_recall:.4f}, mrr={avg_mrr:.4f}, avg_total_latency_sec={avg_total_latency:.4f}"
+        f"[{experiment_name}] recall={avg_recall:.4f}, mrr={avg_mrr:.4f}, "
+        f"bertscore_f1={avg_bertscore_f1:.4f}, "
+        f"avg_regeneration_count={avg_regeneration_count:.4f}, "
+        f"avg_total_latency_sec={avg_total_latency:.4f}"
     )
     return result_df

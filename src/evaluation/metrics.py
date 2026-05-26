@@ -65,6 +65,10 @@ def measure_retrieval_latency(
 def bertscore_f1(predictions: list[str], references: list[str], lang: str = "ko") -> list[float]:
     """Calculate BERTScore F1 values for answer pairs.
     Fall back to zeros when the optional dependency is unavailable."""
+    if len(predictions) != len(references):
+        raise ValueError("`predictions` and `references` must have the same length.")
+    if not predictions:
+        return []
     try:
         from bert_score import score  # noqa: PLC0415
     except ImportError:

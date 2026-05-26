@@ -43,6 +43,10 @@ def get_settings() -> Settings:
     eval_input_dir = data_dir / "eval" / "testset"
     eval_output_dir = data_dir / "eval" / "outputs"
     default_pdf_name = os.getenv("DEFAULT_PDF_FILENAME", "2020_경제금융용어 700선.pdf")
+    chunk_path_env = os.getenv("FINRAG_CHUNK_PATH")
+    default_chunk_json_path = Path(chunk_path_env) if chunk_path_env else processed_dir / "final_chunk.json"
+    if not default_chunk_json_path.is_absolute():
+        default_chunk_json_path = root / default_chunk_json_path
 
     ollama_keep_alive = os.getenv("OLLAMA_KEEP_ALIVE", "-1")
 
@@ -56,7 +60,7 @@ def get_settings() -> Settings:
         chroma_clova_dir=root / "chroma_clova",
         chroma_local_dir=root / "chroma_local",
         default_pdf_path=raw_dir / default_pdf_name,
-        default_chunk_json_path=processed_dir / "final_chunk.json",
+        default_chunk_json_path=default_chunk_json_path,
         default_eval_csv_path=eval_input_dir / "golden_testset_v2.csv",
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         ollama_model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b-instruct"),

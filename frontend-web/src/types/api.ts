@@ -11,6 +11,7 @@ export interface LoginRequest {
 }
 
 export interface SignupRequest extends LoginRequest {
+  email: string;
   role: UserRole;
 }
 
@@ -69,4 +70,15 @@ export interface MonitorRecentItem {
 
 export interface MonitorRecentResponse {
   items: MonitorRecentItem[];
+}
+
+export interface KnowledgeDocument {
+  id: string;
+  term: string;
+  explanation: string;
+  relatedTerms: string[];
+}
+
+export interface KnowledgeDocumentsResponse {
+  items: KnowledgeDocument[];
 }

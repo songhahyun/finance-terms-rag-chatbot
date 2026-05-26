@@ -30,9 +30,16 @@ class OllamaClient:
             "repeat_penalty": repeat_penalty,
         }
 
-    def _options(self, num_predict: int) -> dict[str, float | int]:
+    def _options(
+        self,
+        num_predict: int,
+        overrides: dict[str, float | int] | None = None,
+    ) -> dict[str, float | int]:
         """Build per-request Ollama generation options."""
-        return {**self.options, "num_predict": num_predict}
+        options = {**self.options, "num_predict": num_predict}
+        if overrides:
+            options.update(overrides)
+        return options
 
     def _raise_for_status(self, response: requests.Response) -> None:
         """Raise an HTTP error with Ollama response details and model context."""
@@ -52,7 +59,13 @@ class OllamaClient:
             )
             raise HTTPError(message, response=response) from exc
 
-    def generate(self, prompt: str, *, num_predict: int = 500) -> str:
+    def generate(
+        self,
+        prompt: str,
+        *,
+        num_predict: int = 500,
+        options: dict[str, float | int] | None = None,
+    ) -> str:
         """Send a non-streaming text generation request to Ollama.
         Return the stripped response body from the API payload."""
         url = f"{self.base_url}/api/generate"
@@ -61,7 +74,7 @@ class OllamaClient:
             "prompt": prompt,
             "stream": False,
             "keep_alive": self.keep_alive,
-            "options": self._options(num_predict),
+            "options": self._options(num_predict, options),
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
         self._raise_for_status(response)
@@ -72,6 +85,7 @@ class OllamaClient:
         prompt: str,
         *,
         num_predict: int = 500,
+        options: dict[str, float | int] | None = None,
         on_chunk: Callable[[str], None] | None = None,
     ) -> str:
         """Stream generated text from Ollama while collecting the full output.
@@ -82,7 +96,7 @@ class OllamaClient:
             "prompt": prompt,
             "stream": True,
             "keep_alive": self.keep_alive,
-            "options": self._options(num_predict),
+            "options": self._options(num_predict, options),
         }
         parts: list[str] = []
         with requests.post(url, json=payload, timeout=self.timeout, stream=True) as response:
@@ -100,7 +114,13 @@ class OllamaClient:
                     break
         return "".join(parts).strip()
 
-    def chat(self, messages: list[dict], *, num_predict: int = 500) -> str:
+    def chat(
+        self,
+        messages: list[dict],
+        *,
+        num_predict: int = 500,
+        options: dict[str, float | int] | None = None,
+    ) -> str:
         """Send a chat-style request to Ollama.
         Return the assistant message content from the JSON response."""
         url = f"{self.base_url}/api/chat"
@@ -109,7 +129,7 @@ class OllamaClient:
             "messages": messages,
             "stream": False,
             "keep_alive": self.keep_alive,
-            "options": self._options(num_predict),
+            "options": self._options(num_predict, options),
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
         self._raise_for_status(response)

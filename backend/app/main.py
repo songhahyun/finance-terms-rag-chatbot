@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.middleware.request_logging import RequestLoggingMiddleware
-from backend.app.routers import auth_router, chat_router, health_router, monitor_router
+from backend.app.routers import auth_router, chat_router, health_router, knowledge_documents_router, monitor_router
 
 
 def create_app() -> FastAPI:
@@ -25,6 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(chat_router)
+    app.include_router(knowledge_documents_router)
     app.include_router(monitor_router)
     return app
 

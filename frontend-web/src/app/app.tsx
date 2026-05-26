@@ -4,7 +4,9 @@ import { ProtectedRoute, RoleRoute } from "@/app/route-guards";
 import { useAuth } from "@/app/auth-context";
 import { AdminDashboardPage } from "@/pages/admin-dashboard-page";
 import { ChatPage } from "@/pages/chat-page";
+import { KnowledgeDocumentsPage } from "@/pages/knowledge-documents-page";
 import { LoginPage } from "@/pages/login-page";
+import { SettingsPage } from "@/pages/settings-page";
 
 export function App(): JSX.Element {
   const { isAuthenticated } = useAuth();
@@ -16,8 +18,11 @@ export function App(): JSX.Element {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/chat" element={<ChatPage />} />
+          <Route path="/knowledge-documents" element={<KnowledgeDocumentsPage />} />
           <Route element={<RoleRoute allowedRoles={["admin"]} />}>
-            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
       </Route>
