@@ -15,6 +15,7 @@ sentence-transformers
 rank_bm25
 bert-score
 python-dotenv
+openai
 ragas
 datasets
 streamlit
