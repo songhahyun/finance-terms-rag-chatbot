@@ -5,3 +5,9 @@
 - Current generator: `src.generation.llm.OllamaGenerator` is instantiated directly in `RAGService._build_pipeline()` with Ollama settings.
 - Current settings source: `src.common.config.get_settings()` loads project settings from environment variables and the root `.env`; `backend.app.config.get_backend_settings()` separately loads auth/JWT settings for the FastAPI layer.
 - Chat endpoint: `backend/app/routers/chat.py` exposes `POST /chat` and `POST /chat/stream`, both protected by `get_current_user`, and calls `answer_query()` or `stream_answer()` from `src.serving.rag_service`.
+
+## API Route Namespace
+
+- Health checks remain available at `GET /health`.
+- Application API routers are mounted under `/api`, including `POST /api/auth/login`, `POST /api/chat`, `POST /api/chat/stream`, `GET /api/knowledge-documents`, and `GET /api/monitor/summary`.
+- Frontend `VITE_API_BASE_URL` should contain only the backend origin, for example `http://localhost:8000`; `frontend-web/src/lib/api.ts` appends `/api` in code.

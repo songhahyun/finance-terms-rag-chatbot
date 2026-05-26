@@ -9,7 +9,8 @@ import type {
   TokenResponse,
 } from "@/types/api";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000").replace(/\/+$/, "");
+const API_ROUTE_PREFIX = "/api";
 
 class ApiError extends Error {
   status?: number;
@@ -22,7 +23,7 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${API_ROUTE_PREFIX}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -86,4 +87,4 @@ export async function fetchKnowledgeDocuments(token: string): Promise<KnowledgeD
   });
 }
 
-export { ApiError, API_BASE_URL };
+export { ApiError, API_BASE_URL, API_ROUTE_PREFIX };

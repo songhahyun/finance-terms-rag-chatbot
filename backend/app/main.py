@@ -7,6 +7,8 @@ from backend.app.config import get_backend_settings
 from backend.app.middleware.request_logging import RequestLoggingMiddleware
 from backend.app.routers import auth_router, chat_router, health_router, knowledge_documents_router, monitor_router
 
+API_PREFIX = "/api"
+
 
 def create_app() -> FastAPI:
     """Create the FastAPI application for the backend service.
@@ -22,10 +24,10 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestLoggingMiddleware)
     app.include_router(health_router)
-    app.include_router(auth_router)
-    app.include_router(chat_router)
-    app.include_router(knowledge_documents_router)
-    app.include_router(monitor_router)
+    app.include_router(auth_router, prefix=API_PREFIX)
+    app.include_router(chat_router, prefix=API_PREFIX)
+    app.include_router(knowledge_documents_router, prefix=API_PREFIX)
+    app.include_router(monitor_router, prefix=API_PREFIX)
     return app
 
 
