@@ -7,6 +7,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+DEFAULT_CORS_ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+
 
 @dataclass(frozen=True)
 class BackendSettings:
@@ -17,6 +19,11 @@ class BackendSettings:
     default_admin_username: str
     default_admin_password: str
     default_admin_role: str
+    cors_allowed_origins: tuple[str, ...]
+
+
+def _parse_csv_env(value: str) -> tuple[str, ...]:
+    return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
 @lru_cache(maxsize=1)
@@ -33,4 +40,7 @@ def get_backend_settings() -> BackendSettings:
         default_admin_username=os.getenv("API_ADMIN_USERNAME", "admin"),
         default_admin_password=os.getenv("API_ADMIN_PASSWORD", "admin123"),
         default_admin_role=os.getenv("API_ADMIN_ROLE", "admin"),
+        cors_allowed_origins=_parse_csv_env(
+            os.getenv("CORS_ALLOWED_ORIGINS", DEFAULT_CORS_ALLOWED_ORIGINS)
+        ),
     )
