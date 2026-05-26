@@ -6,7 +6,7 @@ from threading import Lock, Thread
 from typing import Any, Callable
 
 from src.common.config import get_settings
-from src.generation.llm import OllamaGenerator
+from src.generation.factory import build_generator
 from src.generation.rag_pipeline import RAGPipeline
 from src.monitor import PipelineMonitor
 from src.retrieval.factory import build_retriever
@@ -43,15 +43,7 @@ class RAGService:
             chunk_json_path=str(self._settings.default_chunk_json_path),
             k=k,
         )
-        generator = OllamaGenerator(
-            model=self._settings.ollama_model,
-            base_url=self._settings.ollama_base_url,
-            timeout=self._settings.ollama_timeout,
-            temperature=self._settings.ollama_temperature,
-            top_p=self._settings.ollama_top_p,
-            repeat_penalty=self._settings.ollama_repeat_penalty,
-            keep_alive=self._settings.ollama_keep_alive,
-        )
+        generator = build_generator(self._settings)
         return RAGPipeline(
             retriever,
             generator=generator,
