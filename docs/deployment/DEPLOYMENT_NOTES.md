@@ -11,3 +11,9 @@
 - Health checks remain available at `GET /health`.
 - Application API routers are mounted under `/api`, including `POST /api/auth/login`, `POST /api/chat`, `POST /api/chat/stream`, `GET /api/knowledge-documents`, and `GET /api/monitor/summary`.
 - Frontend `VITE_API_BASE_URL` should contain only the backend origin, for example `http://localhost:8000`; `frontend-web/src/lib/api.ts` appends `/api` in code.
+
+## Chroma HTTP Service
+
+- Deployment retrieval uses `CHROMA_CLIENT_MODE=http`, which constructs a `chromadb.HttpClient` for LangChain Chroma instead of opening a local persisted Chroma directory in the backend container.
+- Configure the Chroma service with `CHROMA_HOST`, `CHROMA_PORT`, `CHROMA_SSL`, and `CHROMA_COLLECTION_NAME`; the deployment example uses `chroma:8000` and collection `finance_clova`.
+- Local persisted Chroma remains available only when explicitly configured with `CHROMA_CLIENT_MODE=persistent`, typically with the existing local `chroma_clova` artifact and local collection name.

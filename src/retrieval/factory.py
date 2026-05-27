@@ -13,7 +13,7 @@ def build_retriever(
     *,
     dense_provider: str = "clova",
     dense_model_name: str = "bge-m3",
-    dense_collection_name: str = "docs_clova",
+    dense_collection_name: str | None = None,
     dense_persist_directory: str | None = None,
     chunk_json_path: str | None = None,
     bm25_index_path: str | None = None,
@@ -23,6 +23,7 @@ def build_retriever(
     Support dense, BM25, and hybrid retrieval modes from one entry point."""
     settings = get_settings()
     dense_persist_directory = dense_persist_directory or str(settings.chroma_clova_dir)
+    dense_collection_name = dense_collection_name or settings.chroma_collection_name
     chunk_json_path = chunk_json_path or str(settings.default_chunk_json_path)
     if dense_provider.lower() == "local":
         dense_model_name = _LOCAL_HF_MODEL_NAME
@@ -34,7 +35,11 @@ def build_retriever(
             provider=dense_provider,
             model_name=dense_model_name,
             collection_name=dense_collection_name,
+            client_mode=settings.chroma_client_mode,
             persist_directory=dense_persist_directory,
+            chroma_host=settings.chroma_host,
+            chroma_port=settings.chroma_port,
+            chroma_ssl=settings.chroma_ssl,
             k=k,
         )
     
@@ -50,7 +55,11 @@ def build_retriever(
             provider=dense_provider,
             model_name=dense_model_name,
             collection_name=dense_collection_name,
+            client_mode=settings.chroma_client_mode,
             persist_directory=dense_persist_directory,
+            chroma_host=settings.chroma_host,
+            chroma_port=settings.chroma_port,
+            chroma_ssl=settings.chroma_ssl,
             k=k,
         )
         bm25 = build_bm25_retriever(

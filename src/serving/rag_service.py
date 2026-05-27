@@ -38,8 +38,6 @@ class RAGService:
             mode=mode,
             dense_provider="clova",
             dense_model_name="bge-m3",
-            dense_collection_name="docs_clova",
-            dense_persist_directory=str(self._settings.chroma_clova_dir),
             chunk_json_path=str(self._settings.default_chunk_json_path),
             k=k,
         )

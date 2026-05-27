@@ -32,6 +32,11 @@ class Settings:
     openai_generation_model: str
     generation_temperature: float
     generation_max_tokens: int
+    chroma_client_mode: str
+    chroma_host: str
+    chroma_port: int
+    chroma_ssl: bool
+    chroma_collection_name: str
     monitor_stage_log_path: Path
     monitor_stage3_timeout_sec: float
 
@@ -79,6 +84,11 @@ def get_settings() -> Settings:
         openai_generation_model=os.getenv("OPENAI_GENERATION_MODEL", "gpt-4o-mini"),
         generation_temperature=float(os.getenv("GENERATION_TEMPERATURE", "0.1")),
         generation_max_tokens=int(os.getenv("GENERATION_MAX_TOKENS", "800")),
+        chroma_client_mode=os.getenv("CHROMA_CLIENT_MODE", "http").lower(),
+        chroma_host=os.getenv("CHROMA_HOST", "chroma"),
+        chroma_port=int(os.getenv("CHROMA_PORT", "8000")),
+        chroma_ssl=os.getenv("CHROMA_SSL", "false").lower() in {"1", "true", "yes", "on"},
+        chroma_collection_name=os.getenv("CHROMA_COLLECTION_NAME", "finance_clova"),
         monitor_stage_log_path=Path(
             os.getenv("MONITOR_STAGE_LOG_PATH", str(root / "logs" / "stage_monitor.log"))
         ),
