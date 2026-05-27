@@ -32,11 +32,11 @@ uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 
 기본 API 엔드포인트:
 - `GET /health`
-- `POST /auth/login`
-- `POST /auth/signup`
-- `POST /chat`
-- `GET /monitor/summary`
-- `GET /monitor/recent?limit=20`
+- `POST /api/auth/login`
+- `POST /api/auth/signup`
+- `POST /api/chat`
+- `GET /api/monitor/summary`
+- `GET /api/monitor/recent?limit=20`
 
 ## 3) 프론트엔드 실행 (Vite + React + TypeScript)
 
@@ -47,7 +47,7 @@ npm install
 npm run dev
 ```
 
-기본적으로 `VITE_API_BASE_URL=http://localhost:8000` 백엔드와 연동합니다.
+기본적으로 `VITE_API_BASE_URL=http://localhost:8000` 백엔드와 연동합니다. 프론트엔드 코드는 API 요청에 `/api` 경로를 자동으로 붙입니다.
 
 역할 기반 라우팅:
 - `user`: `/chat`만 접근 가능
@@ -67,10 +67,10 @@ API_ADMIN_ROLE=admin
 ```
 
 인증 동작:
-- `POST /auth/login`: 기존 사용자 로그인 후 bearer token 반환
-- `POST /auth/signup`: 새 사용자 생성 후 bearer token 반환
-- `/chat` 및 `/chat/stream`: 인증 필요
-- `/monitor/summary`, `/monitor/recent`: 인증 필요, `admin` 역할만 허용
+- `POST /api/auth/login`: 기존 사용자 로그인 후 bearer token 반환
+- `POST /api/auth/signup`: 새 사용자 생성 후 bearer token 반환
+- `/api/chat` 및 `/api/chat/stream`: 인증 필요
+- `/api/monitor/summary`, `/api/monitor/recent`: 인증 필요, `admin` 역할만 허용
 
 PowerShell에서 로그인 예시:
 
@@ -82,7 +82,7 @@ $body = @{
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri "http://localhost:8000/auth/login" `
+  -Uri "http://localhost:8000/api/auth/login" `
   -ContentType "application/json" `
   -Body $body
 ```
@@ -98,7 +98,7 @@ $body = @{
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri "http://localhost:8000/auth/signup" `
+  -Uri "http://localhost:8000/api/auth/signup" `
   -ContentType "application/json" `
   -Body $body
 ```
@@ -115,10 +115,10 @@ Invoke-RestMethod `
 
 ## 6) Stage 모니터링 로그 (Admin 계정만 접근 가능)
 
-`/chat` 호출 시 stage별 실행 지표가 서버 메모리에 누적됩니다.
+`/api/chat` 호출 시 stage별 실행 지표가 서버 메모리에 누적됩니다.
 
-- `GET /monitor/summary`: stage별 `success_rate`, `avg_elapsed_sec`, `avg_throughput` 확인
-- `GET /monitor/recent`: 최근 trace의 stage 상세(`success`, `elapsed_sec`, `throughput`, `error`) 확인
+- `GET /api/monitor/summary`: stage별 `success_rate`, `avg_elapsed_sec`, `avg_throughput` 확인
+- `GET /api/monitor/recent`: 최근 trace의 stage 상세(`success`, `elapsed_sec`, `throughput`, `error`) 확인
 
 ## 7) Generation 실험 Weave 로깅
 
@@ -182,7 +182,7 @@ python -m src.evaluation --generated-csv data/eval/outputs/generation_001_baseli
 
 ## 9) API 요청/응답 예시
 
-`POST /chat`
+`POST /api/chat`
 
 요청 예시:
 

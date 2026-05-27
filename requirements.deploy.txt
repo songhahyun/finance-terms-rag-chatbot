@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+requests
+python-dotenv
+chromadb
+langchain-core
+langchain-chroma
+langchain-community
+langchain-naver
+openai
+kiwipiepy
+rank_bm25
