@@ -34,7 +34,12 @@ frontend-web/dist/
 frontend-web/.vite/
 frontend-web/tsconfig.tsbuildinfo
 
-data/
+data/*
+!data/processed/
+data/processed/*
+!data/processed/bm25_index.pkl
+!data/processed/final_chunk.json
+!data/processed/kiwi_user_dict.tsv
 
 chroma_clova/
 chroma_openai/
