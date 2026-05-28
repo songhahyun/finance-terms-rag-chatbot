@@ -1,0 +1,4 @@
+﻿experiment,rows,answer_relevancy,faithfulness,context_precision,context_recall,detail_output_path
+dense_clova_bge-m3,100,0.798644647929257,0.8781543097425448,0.960180555524766,0.9708076923076924,/content/finance-terms-rag-chatbot/data/eval/outputs/ragas_002_language_validator/dense_clova_bge-m3_ragas.csv
+hybrid_clova_bge-m3,100,0.8323210215601514,0.883311605061605,0.930430555529196,0.9711375122462078,/content/finance-terms-rag-chatbot/data/eval/outputs/ragas_002_language_validator/hybrid_clova_bge-m3_ragas.csv
+hybrid_openai_text-embedding-3-small,100,0.801695901862724,0.8878046079737255,0.930999999972446,0.9540380561467517,/content/finance-terms-rag-chatbot/data/eval/outputs/ragas_002_language_validator/hybrid_openai_text-embedding-3-small_ragas.csv
