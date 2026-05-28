@@ -210,7 +210,11 @@ def run_ragas_evaluation(
         from ragas.llms import LangchainLLMWrapper  # noqa: PLC0415
         from ragas.metrics import answer_relevancy, context_precision, context_recall, faithfulness  # noqa: PLC0415
     except ImportError as exc:
-        raise ImportError("RAGAS evaluation dependencies are missing. Run `pip install -r requirements.txt`.") from exc
+        raise ImportError(
+            "RAGAS evaluation dependencies are missing or incompatible. "
+            "Reinstall the pinned requirements with `pip install -r requirements.txt`. "
+            f"Original import error: {exc}"
+        ) from exc
 
     generated_df = pd.read_csv(generated_csv_path, encoding="utf-8-sig")
     if max_rows is not None:
