@@ -1,0 +1,3 @@
+experiment,rows,avg_recall,avg_mrr,avg_bertscore_f1,avg_stage_2_regeneration_count,avg_stage_1_retrieval_bm25_latency_sec,avg_stage1_1_retrieval_dense_latency_sec,avg_stage_1_retrieval_fusion_latency_sec,avg_stage_1_retrieval_total_latency_sec,avg_stage_2_generation_latency_sec,avg_total_latency_sec
+hybrid_clova_bge-m3_llama,100,0.98,0.978333333,0.76612236,0.02,0.00371267,0.35475491,3.28E-05,0.358500389,5.950788515,6.309288904
+hybrid_clova_bge-m3_gemma,100,0.98,0.978333333,0.751924456,0,0.003793192,0.24965406,3.35E-05,0.253480787,3.268748921,3.522229707
