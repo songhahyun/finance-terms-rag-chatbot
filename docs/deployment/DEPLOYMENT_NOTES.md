@@ -27,3 +27,10 @@
 - Environment Variable: `VITE_API_BASE_URL`
 - `VITE_API_BASE_URL` must contain only the deployed backend origin, for example `https://your-backend-url`; frontend code appends the `/api` namespace automatically.
 - Do not hard-code Render backend URLs in frontend source. Configure the backend origin in the Vercel project environment variables.
+
+## CI and Backend Image Publishing
+
+- GitHub Actions runs backend deployment dependency checks, frontend `npm ci` build, and a required backend Docker image build on pull requests and pushes to `dev` or `main`.
+- Pushes to `dev` or `main` publish the backend image to GHCR as `ghcr.io/<owner>/<repo>/backend:latest` and `ghcr.io/<owner>/<repo>/backend:<commit-sha>`.
+- Render should deploy the backend from the prebuilt GHCR image instead of building from the GitHub repository. If the GHCR package is private, configure Render registry credentials or make the package accessible to Render.
+- Render environment variables remain configured in the Render UI; secrets are not stored in the image or workflow.
