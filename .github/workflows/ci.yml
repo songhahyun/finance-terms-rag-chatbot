@@ -10,39 +10,44 @@ on:
       - dev
       - main
 
-permissions:
-  contents: read
-  packages: write
+env:
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
 
 jobs:
   backend:
     name: Backend Python Checks
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: requirements.deploy.txt
 
       - name: Install deployment dependencies
-        run: python -m pip install --upgrade pip && python -m pip install -r requirements.deploy.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.deploy.txt
 
       - name: Import backend app
-        run: python -c "import backend.app.main; print('backend import ok')"
+        run: python -c "from backend.app.main import app; print(app.title)"
 
-      - name: Compile backend and source packages
+      - name: Compile backend and source modules
         run: python -m compileall backend src
 
   frontend:
     name: Frontend Build
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend-web
+
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Node
@@ -53,82 +58,63 @@ jobs:
           cache-dependency-path: frontend-web/package-lock.json
 
       - name: Install frontend dependencies
-        working-directory: frontend-web
         run: npm ci
 
       - name: Build frontend
-        working-directory: frontend-web
         run: npm run build
 
   docker:
-    name: Backend Docker Image
+    name: Build and Publish Backend Image
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
     steps:
-      - name: Check out repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build backend image
-        run: docker build -f Dockerfile.backend -t finance-rag-backend:ci .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Verify image excludes Chroma artifacts
+      - name: Build backend image for verification
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.backend
+          load: true
+          tags: backend-ci:${{ github.sha }}
+
+      - name: Verify backend image excludes Chroma artifacts
         run: |
-          docker run --rm --entrypoint sh finance-rag-backend:ci -c '
-            test ! -e /app/chroma_clova &&
-            test ! -e /app/chroma_openai &&
-            test ! -e /app/chroma_local
-          '
+          test -z "$(docker run --rm backend-ci:${{ github.sha }} sh -c "find /app -maxdepth 2 -type d \( -name 'chroma_clova' -o -name 'chroma_openai' -o -name 'chroma_local' -o -name 'chroma_*' \) -print")"
 
-      - name: Verify deployment dependency set
+      - name: Verify backend image includes required processed data
         run: |
-          docker run --rm --entrypoint python finance-rag-backend:ci -c "
-          import importlib.metadata as metadata
-          excluded = {
-              'sentence-transformers',
-              'langchain-huggingface',
-              'ragas',
-              'bert-score',
-              'datasets',
-              'streamlit',
-              'weave',
-          }
-          installed = {dist.metadata['Name'].lower() for dist in metadata.distributions()}
-          present = sorted(excluded & installed)
-          if present:
-              raise SystemExit(f'Excluded packages installed: {present}')
-          print('deployment dependency set ok')
-          "
+          docker run --rm backend-ci:${{ github.sha }} sh -c "test -f /app/data/processed/bm25_index.pkl"
+          docker run --rm backend-ci:${{ github.sha }} sh -c "test -f /app/data/processed/final_chunk.json"
+          docker run --rm backend-ci:${{ github.sha }} sh -c "test -f /app/data/processed/kiwi_user_dict.tsv"
 
-  publish-backend-image:
-    name: Publish Backend Image
-    runs-on: ubuntu-latest
-    needs:
-      - backend
-      - frontend
-      - docker
-    if: github.event_name == 'push'
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set lowercase image name
-        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> "$GITHUB_ENV"
+      - name: Verify backend image excludes local/evaluation packages
+        run: |
+          test -z "$(docker run --rm backend-ci:${{ github.sha }} sh -c "pip list --format=freeze | grep -E '^(sentence-transformers|langchain-huggingface|ragas|bert-score|datasets|streamlit|weave)==' || true")"
 
       - name: Log in to GHCR
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push backend image
+      - name: Publish backend image to GHCR
+        if: github.event_name == 'push'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile.backend
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
