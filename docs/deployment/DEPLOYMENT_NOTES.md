@@ -17,3 +17,13 @@
 - Deployment retrieval uses `CHROMA_CLIENT_MODE=http`, which constructs a `chromadb.HttpClient` for LangChain Chroma instead of opening a local persisted Chroma directory in the backend container.
 - Configure the Chroma service with `CHROMA_HOST`, `CHROMA_PORT`, `CHROMA_SSL`, and `CHROMA_COLLECTION_NAME`; the deployment example uses `chroma:8000` and collection `finance_clova`.
 - Local persisted Chroma remains available only when explicitly configured with `CHROMA_CLIENT_MODE=persistent`, typically with the existing local `chroma_clova` artifact and local collection name.
+
+## Vercel Frontend Deployment
+
+- Framework Preset: Vite
+- Root Directory: `frontend-web`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Environment Variable: `VITE_API_BASE_URL`
+- `VITE_API_BASE_URL` must contain only the deployed backend origin, for example `https://your-backend-url`; frontend code appends the `/api` namespace automatically.
+- Do not hard-code Render backend URLs in frontend source. Configure the backend origin in the Vercel project environment variables.
