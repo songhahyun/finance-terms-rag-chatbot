@@ -4,6 +4,7 @@ from pathlib import Path
 
 from src.generation.query_intent import ClassifierMethod, QueryIntent, QueryIntentResult
 from src.monitor import PipelineMonitor
+from src.serving import rag_service
 from src.serving.rag_service import RAGRequest, RAGService
 
 
@@ -146,3 +147,34 @@ def test_service_monitor_log_includes_classifier_metadata(tmp_path: Path) -> Non
     assert "stage_0_intent_classification" in log_text
     assert "'intent': 'simple'" in log_text
     assert "'routing_reason': 'matched_greeting'" in log_text
+
+
+def test_stream_answer_final_payload_includes_routing_metadata(monkeypatch) -> None:
+    classifier = _FakeClassifier(
+        QueryIntentResult(
+            intent=QueryIntent.SIMPLE,
+            confidence=1.0,
+            reason="matched_greeting",
+            classifier_method=ClassifierMethod.RULE,
+            fixed_answer="안녕하세요.",
+        )
+    )
+    service = _ServiceWithFakePipeline(intent_classifier=classifier)
+    monkeypatch.setattr(rag_service, "_SERVICE", service)
+
+    queue, result_holder, error_holder = rag_service.stream_answer("안녕?")
+
+    chunks = []
+    while True:
+        item = queue.get(timeout=5)
+        if item is None:
+            break
+        chunks.append(item)
+
+    assert chunks == ["안녕하세요."]
+    assert error_holder == {}
+    final = result_holder["result"]
+    assert final["intent"] == "simple"
+    assert final["routing_reason"] == "matched_greeting"
+    assert final["matched_terms"] == []
+    assert final["classifier"] == {"method": "rule", "confidence": 1.0}

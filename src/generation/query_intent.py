@@ -376,17 +376,31 @@ class QueryIntentClassifier:
         *,
         rule_classifier: RuleBasedQueryClassifier,
         llm_classifier: OpenAILLMIntentClassifier | None = None,
+        cache_size: int = 256,
     ) -> None:
         self._rule_classifier = rule_classifier
         self._llm_classifier = llm_classifier
+        self._cache_size = max(cache_size, 0)
+        self._cache: dict[str, QueryIntentResult] = {}
 
     def classify(self, query: str) -> QueryIntentResult:
+        if query in self._cache:
+            return self._cache[query]
         rule_result = self._rule_classifier.classify(query)
         if self._is_rule_final(rule_result):
-            return rule_result
+            return self._remember(query, rule_result)
         if self._llm_classifier is None:
-            return rule_result
-        return self._llm_classifier.classify(query)
+            return self._remember(query, rule_result)
+        return self._remember(query, self._llm_classifier.classify(query))
+
+    def _remember(self, query: str, result: QueryIntentResult) -> QueryIntentResult:
+        if self._cache_size == 0:
+            return result
+        if len(self._cache) >= self._cache_size:
+            oldest_key = next(iter(self._cache))
+            self._cache.pop(oldest_key, None)
+        self._cache[query] = result
+        return result
 
     @staticmethod
     def _is_rule_final(result: QueryIntentResult) -> bool:

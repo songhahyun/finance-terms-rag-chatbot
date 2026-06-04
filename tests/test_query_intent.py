@@ -210,6 +210,16 @@ class _FakeLLMClassifier:
         return self.result
 
 
+class _FakeRuleClassifier:
+    def __init__(self, result: QueryIntentResult) -> None:
+        self.result = result
+        self.calls = 0
+
+    def classify(self, query: str) -> QueryIntentResult:
+        self.calls += 1
+        return self.result
+
+
 def test_final_classifier_keeps_rule_rag_result_and_skips_llm(tmp_path: Path) -> None:
     path = tmp_path / "kiwi_user_dict.tsv"
     path.write_text("기준금리\tNNP\n", encoding="utf-8")
@@ -254,3 +264,22 @@ def test_final_classifier_uses_llm_for_rule_no_match(tmp_path: Path) -> None:
     assert result.intent == QueryIntent.CLARIFY
     assert result.reason == "ambiguous"
     assert llm.calls == 1
+
+
+def test_final_classifier_caches_repeated_queries() -> None:
+    rule = _FakeRuleClassifier(
+        QueryIntentResult(
+            intent=QueryIntent.SIMPLE,
+            confidence=1.0,
+            reason="matched_greeting",
+            classifier_method=ClassifierMethod.RULE,
+            fixed_answer="안녕하세요.",
+        )
+    )
+    classifier = QueryIntentClassifier(rule_classifier=rule)
+
+    first = classifier.classify("안녕?")
+    second = classifier.classify("안녕?")
+
+    assert first is second
+    assert rule.calls == 1
