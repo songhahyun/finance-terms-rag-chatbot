@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from src.generation.query_intent import ClassifierMethod, QueryIntent, QueryIntentResult
 from src.monitor import PipelineMonitor
 from src.serving.rag_service import RAGRequest, RAGService
@@ -23,22 +25,24 @@ class _FakeDoc:
 class _FakePipeline:
     def __init__(self) -> None:
         self.calls = 0
+        self.trace = None
 
-    def answer(self, question: str, *, language: str, on_chunk=None):
+    def answer(self, question: str, *, language: str, on_chunk=None, trace=None):
         self.calls += 1
+        self.trace = trace
         if on_chunk is not None:
             on_chunk("rag-token")
         return {
             "answer": "RAG 답변",
             "retrieved_ids": ["chunk-1"],
             "contexts": [_FakeDoc()],
-            "monitoring": {"trace_id": "trace"},
+            "monitoring": trace.to_dict() if trace is not None else {"trace_id": "trace"},
         }
 
 
 class _ServiceWithFakePipeline(RAGService):
-    def __init__(self, *, intent_classifier) -> None:
-        super().__init__(intent_classifier=intent_classifier, monitor=PipelineMonitor(log_path=None))
+    def __init__(self, *, intent_classifier, monitor: PipelineMonitor | None = None) -> None:
+        super().__init__(intent_classifier=intent_classifier, monitor=monitor or PipelineMonitor(log_path=None))
         self.pipeline = _FakePipeline()
         self.pipeline_builds = 0
 
@@ -65,6 +69,8 @@ def test_service_non_rag_route_does_not_build_pipeline() -> None:
     assert result["retrieved_ids"] == []
     assert result["sources"] == []
     assert result["intent"] == "simple"
+    assert result["monitoring"]["metadata"]["intent"] == "simple"
+    assert result["monitoring"]["stages"][0]["stage"] == "stage_0_intent_classification"
     assert service.pipeline_builds == 0
     assert service.pipeline.calls == 0
 
@@ -88,5 +94,55 @@ def test_service_rag_route_uses_existing_pipeline() -> None:
     assert result["sources"][0]["chunk_id"] == "chunk-1"
     assert result["intent"] == "needs_rag"
     assert result["matched_terms"] == ["가산금리"]
+    assert result["monitoring"]["metadata"]["intent"] == "needs_rag"
+    assert result["monitoring"]["stages"][0]["stage"] == "stage_0_intent_classification"
     assert service.pipeline_builds == 1
     assert service.pipeline.calls == 1
+    assert service.pipeline.trace is not None
+
+
+def test_service_monitor_recent_exposes_classifier_stage() -> None:
+    classifier = _FakeClassifier(
+        QueryIntentResult(
+            intent=QueryIntent.SIMPLE,
+            confidence=1.0,
+            reason="matched_greeting",
+            classifier_method=ClassifierMethod.RULE,
+            fixed_answer="안녕하세요.",
+        )
+    )
+    service = _ServiceWithFakePipeline(intent_classifier=classifier)
+
+    service.answer(RAGRequest(question="안녕?"))
+    recent = service.monitor_recent(limit=1)
+
+    item = recent["items"][0]
+    assert item["metadata"]["intent"] == "simple"
+    assert item["metadata"]["routing_reason"] == "matched_greeting"
+    assert item["metadata"]["classifier_method"] == "rule"
+    assert item["metadata"]["confidence"] == 1.0
+    assert item["stages"][0]["stage"] == "stage_0_intent_classification"
+
+
+def test_service_monitor_log_includes_classifier_metadata(tmp_path: Path) -> None:
+    classifier = _FakeClassifier(
+        QueryIntentResult(
+            intent=QueryIntent.SIMPLE,
+            confidence=1.0,
+            reason="matched_greeting",
+            classifier_method=ClassifierMethod.RULE,
+            fixed_answer="안녕하세요.",
+        )
+    )
+    log_path = tmp_path / "stage_monitor.log"
+    service = _ServiceWithFakePipeline(
+        intent_classifier=classifier,
+        monitor=PipelineMonitor(log_path=log_path),
+    )
+
+    service.answer(RAGRequest(question="안녕?"))
+
+    log_text = log_path.read_text(encoding="utf-8")
+    assert "stage_0_intent_classification" in log_text
+    assert "'intent': 'simple'" in log_text
+    assert "'routing_reason': 'matched_greeting'" in log_text

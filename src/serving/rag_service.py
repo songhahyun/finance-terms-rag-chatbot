@@ -104,25 +104,50 @@ class RAGService:
         }
 
     def answer(self, request: RAGRequest, *, on_chunk: Callable[[str], None] | None = None) -> dict[str, Any]:
-        classification = self._intent_classifier.classify(request.question)
+        trace = self._monitor.start_trace(
+            query=request.question,
+            metadata={"mode": request.mode, "k": request.k, "language": request.language},
+        )
+        classification = trace.run_stage(
+            "stage_0_intent_classification",
+            lambda: self._classify_with_trace_metadata(request.question, trace),
+            throughput_unit="queries/sec",
+        )
         if classification.intent != QueryIntent.NEEDS_RAG:
-            return self._answer_without_rag(request.question, classification, on_chunk=on_chunk)
+            return self._answer_without_rag(request.question, classification, trace=trace, on_chunk=on_chunk)
 
         pipeline = self.get_pipeline(request.mode, request.k)
         result = pipeline.answer(
             request.question,
             language=request.language,
             on_chunk=on_chunk,
+            trace=trace,
         )
         response = self._serialize_result(request.question, result)
         response.update(classification.routing_metadata())
         return response
+
+    def _classify_with_trace_metadata(self, question: str, trace: Any) -> QueryIntentResult:
+        classification = self._intent_classifier.classify(question)
+        trace.metadata.update(self._trace_metadata_from_classification(classification))
+        return classification
+
+    @staticmethod
+    def _trace_metadata_from_classification(classification: QueryIntentResult) -> dict[str, Any]:
+        return {
+            "intent": classification.intent.value,
+            "routing_reason": classification.reason,
+            "matched_terms": list(classification.matched_terms),
+            "classifier_method": classification.classifier_method.value,
+            "confidence": classification.confidence,
+        }
 
     def _answer_without_rag(
         self,
         question: str,
         classification: QueryIntentResult,
         *,
+        trace: Any,
         on_chunk: Callable[[str], None] | None = None,
     ) -> dict[str, Any]:
         answer = classification.fixed_answer
@@ -140,7 +165,7 @@ class RAGService:
             "language_validation": None,
             "retrieved_ids": [],
             "sources": [],
-            "monitoring": None,
+            "monitoring": trace.to_dict(),
         }
         response.update(classification.routing_metadata())
         return response
