@@ -5,6 +5,7 @@ from pathlib import Path
 from src.generation.query_intent import (
     ClassifierMethod,
     FinanceTermDictionary,
+    OpenAILLMIntentClassifier,
     QueryIntent,
     QueryIntentResult,
     RuleBasedQueryClassifier,
@@ -108,3 +109,91 @@ def test_rule_classifier_routes_unsupported_domain_to_simple_fixed_answer(tmp_pa
     assert result.intent == QueryIntent.SIMPLE
     assert result.reason == "unsupported_domain_fixed_answer"
     assert result.fixed_answer is not None
+
+
+class _FakeMessage:
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+
+class _FakeChoice:
+    def __init__(self, content: str) -> None:
+        self.message = _FakeMessage(content)
+
+
+class _FakeResponse:
+    def __init__(self, content: str) -> None:
+        self.choices = [_FakeChoice(content)]
+
+
+class _FakeCompletions:
+    def __init__(self, content: str) -> None:
+        self.content = content
+        self.calls = 0
+        self.last_kwargs = None
+
+    def create(self, **kwargs):
+        self.calls += 1
+        self.last_kwargs = kwargs
+        return _FakeResponse(self.content)
+
+
+class _FakeChat:
+    def __init__(self, content: str) -> None:
+        self.completions = _FakeCompletions(content)
+
+
+class _FakeClient:
+    def __init__(self, content: str) -> None:
+        self.chat = _FakeChat(content)
+
+
+def test_llm_classifier_returns_structured_result() -> None:
+    client = _FakeClient('{"intent":"needs_web","confidence":0.91,"reason":"latest_news"}')
+    classifier = OpenAILLMIntentClassifier(api_key="", client=client)
+
+    result = classifier.classify("최근 환율 뉴스 알려줘")
+
+    assert result.intent == QueryIntent.NEEDS_WEB
+    assert result.confidence == 0.91
+    assert result.reason == "latest_news"
+    assert result.classifier_method == ClassifierMethod.LLM
+    assert client.chat.completions.calls == 1
+    assert client.chat.completions.last_kwargs["temperature"] == 0
+    assert client.chat.completions.last_kwargs["max_tokens"] == 80
+
+
+def test_llm_classifier_json_parse_failure_routes_to_clarify() -> None:
+    classifier = OpenAILLMIntentClassifier(api_key="", client=_FakeClient("not json"))
+
+    result = classifier.classify("애매한 질문")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.confidence == 0.0
+    assert result.reason == "llm_classifier_failed"
+
+
+def test_llm_classifier_low_confidence_routes_to_clarify() -> None:
+    classifier = OpenAILLMIntentClassifier(
+        api_key="",
+        client=_FakeClient('{"intent":"simple","confidence":0.2,"reason":"weak"}'),
+        confidence_threshold=0.7,
+    )
+
+    result = classifier.classify("간단한 질문?")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.confidence == 0.2
+    assert result.reason == "llm_classifier_low_confidence"
+
+
+def test_llm_classifier_disallows_rag_label() -> None:
+    classifier = OpenAILLMIntentClassifier(
+        api_key="",
+        client=_FakeClient('{"intent":"needs_rag","confidence":0.99,"reason":"bad_label"}'),
+    )
+
+    result = classifier.classify("가산금리 알려줘")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.reason == "llm_classifier_failed"
