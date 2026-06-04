@@ -7,6 +7,7 @@ from src.generation.query_intent import (
     FinanceTermDictionary,
     QueryIntent,
     QueryIntentResult,
+    RuleBasedQueryClassifier,
     normalize_term,
 )
 
@@ -58,3 +59,52 @@ def test_finance_dictionary_matches_abbreviation(tmp_path: Path) -> None:
     dictionary = FinanceTermDictionary.load(path)
 
     assert dictionary.find_matches("etf 뜻 알려줘") == ["ETF"]
+
+
+def test_rule_classifier_routes_finance_term_to_rag(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("가산금리\tNNP\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("가산금리란 무엇인가요?")
+
+    assert result.intent == QueryIntent.NEEDS_RAG
+    assert result.reason == "matched_finance_terms"
+    assert result.matched_terms == ["가산금리"]
+
+
+def test_rule_classifier_routes_current_finance_query_to_web(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("기준금리 오늘 얼마야?")
+
+    assert result.intent == QueryIntent.NEEDS_WEB
+    assert result.reason == "matched_current_information_signal"
+    assert result.matched_terms == ["기준금리"]
+    assert result.fixed_answer is not None
+
+
+def test_rule_classifier_routes_greeting_to_simple(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("가산금리\tNNP\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("안녕?")
+
+    assert result.intent == QueryIntent.SIMPLE
+    assert result.reason == "matched_greeting"
+    assert result.fixed_answer is not None
+
+
+def test_rule_classifier_routes_unsupported_domain_to_simple_fixed_answer(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("가산금리\tNNP\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("파이썬 리스트 컴프리헨션 알려줘")
+
+    assert result.intent == QueryIntent.SIMPLE
+    assert result.reason == "unsupported_domain_fixed_answer"
+    assert result.fixed_answer is not None
