@@ -16,8 +16,17 @@ class SourceItem(BaseModel):
     text: str
 
 
+class ClassifierInfo(BaseModel):
+    method: str
+    confidence: float
+
+
 class ChatResponse(BaseModel):
     question: str
     answer: str
     retrieved_ids: list[str | None]
     sources: list[SourceItem]
+    intent: str
+    routing_reason: str
+    matched_terms: list[str]
+    classifier: ClassifierInfo
