@@ -368,3 +368,28 @@ class OpenAILLMIntentClassifier:
             classifier_method=ClassifierMethod.LLM,
             fixed_answer=DEFAULT_CLARIFICATION_ANSWER if intent == QueryIntent.CLARIFY else None,
         )
+
+
+class QueryIntentClassifier:
+    def __init__(
+        self,
+        *,
+        rule_classifier: RuleBasedQueryClassifier,
+        llm_classifier: OpenAILLMIntentClassifier | None = None,
+    ) -> None:
+        self._rule_classifier = rule_classifier
+        self._llm_classifier = llm_classifier
+
+    def classify(self, query: str) -> QueryIntentResult:
+        rule_result = self._rule_classifier.classify(query)
+        if self._is_rule_final(rule_result):
+            return rule_result
+        if self._llm_classifier is None:
+            return rule_result
+        return self._llm_classifier.classify(query)
+
+    @staticmethod
+    def _is_rule_final(result: QueryIntentResult) -> bool:
+        if result.intent in {QueryIntent.NEEDS_WEB, QueryIntent.NEEDS_RAG, QueryIntent.SIMPLE}:
+            return True
+        return result.reason != "rule_no_match"

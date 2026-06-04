@@ -6,6 +6,7 @@ from src.generation.query_intent import (
     ClassifierMethod,
     FinanceTermDictionary,
     OpenAILLMIntentClassifier,
+    QueryIntentClassifier,
     QueryIntent,
     QueryIntentResult,
     RuleBasedQueryClassifier,
@@ -197,3 +198,59 @@ def test_llm_classifier_disallows_rag_label() -> None:
 
     assert result.intent == QueryIntent.CLARIFY
     assert result.reason == "llm_classifier_failed"
+
+
+class _FakeLLMClassifier:
+    def __init__(self, result: QueryIntentResult) -> None:
+        self.result = result
+        self.calls = 0
+
+    def classify(self, query: str) -> QueryIntentResult:
+        self.calls += 1
+        return self.result
+
+
+def test_final_classifier_keeps_rule_rag_result_and_skips_llm(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    llm = _FakeLLMClassifier(
+        QueryIntentResult(intent=QueryIntent.CLARIFY, confidence=1.0, reason="unused")
+    )
+    classifier = QueryIntentClassifier(rule_classifier=RuleBasedQueryClassifier(path), llm_classifier=llm)
+
+    result = classifier.classify("기준금리란 무엇인가요?")
+
+    assert result.intent == QueryIntent.NEEDS_RAG
+    assert result.matched_terms == ["기준금리"]
+    assert llm.calls == 0
+
+
+def test_final_classifier_prioritizes_web_over_finance_term(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    classifier = QueryIntentClassifier(rule_classifier=RuleBasedQueryClassifier(path))
+
+    result = classifier.classify("기준금리 오늘 얼마야?")
+
+    assert result.intent == QueryIntent.NEEDS_WEB
+    assert result.matched_terms == ["기준금리"]
+
+
+def test_final_classifier_uses_llm_for_rule_no_match(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    llm = _FakeLLMClassifier(
+        QueryIntentResult(
+            intent=QueryIntent.CLARIFY,
+            confidence=0.8,
+            reason="ambiguous",
+            classifier_method=ClassifierMethod.LLM,
+        )
+    )
+    classifier = QueryIntentClassifier(rule_classifier=RuleBasedQueryClassifier(path), llm_classifier=llm)
+
+    result = classifier.classify("이거 알려줘")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.reason == "ambiguous"
+    assert llm.calls == 1
