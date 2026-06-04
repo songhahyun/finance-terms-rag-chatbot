@@ -156,8 +156,14 @@ class PipelineMonitor:
         Skip logging entirely when no logger has been configured."""
         if self._logger is None:
             return
+        metadata: dict[str, Any] = {}
+        with self._lock:
+            for trace in self._history:
+                if trace.trace_id == trace_id:
+                    metadata = dict(trace.metadata)
+                    break
         self._logger.info(
-            "trace_id=%s stage=%s success=%s elapsed_sec=%.4f throughput=%.4f %s work_units=%.2f error=%s",
+            "trace_id=%s stage=%s success=%s elapsed_sec=%.4f throughput=%.4f %s work_units=%.2f error=%s metadata=%s",
             trace_id,
             metric.stage,
             metric.success,
@@ -166,6 +172,7 @@ class PipelineMonitor:
             metric.throughput_unit,
             metric.work_units,
             metric.error or "-",
+            metadata,
         )
 
     def _log_trace_started(self, trace: QueryTrace) -> None:

@@ -175,15 +175,15 @@ class RAGPipeline:
         language: str | None = None,
         *,
         on_chunk: Callable[[str], None] | None = None,
+        trace=None,
     ) -> dict:
         """Answer a user query through the configured RAG flow.
         Return the answer text, retrieved ids, contexts, and monitoring metadata."""
         if self.generator is None:
             raise ValueError("`generator` is required.")
 
-        trace = None
         if self.monitor is not None:
-            trace = self.monitor.start_trace(
+            trace = trace or self.monitor.start_trace(
                 query=query,
                 metadata={"mode": "single_generator"},
             )

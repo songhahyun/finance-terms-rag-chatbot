@@ -39,6 +39,10 @@ class Settings:
     chroma_collection_name: str
     monitor_stage_log_path: Path
     monitor_stage3_timeout_sec: float
+    intent_classifier_provider: str
+    intent_classifier_model: str
+    intent_classifier_timeout: float
+    intent_classifier_confidence_threshold: float
 
 
 def get_settings() -> Settings:
@@ -93,4 +97,10 @@ def get_settings() -> Settings:
             os.getenv("MONITOR_STAGE_LOG_PATH", str(root / "logs" / "stage_monitor.log"))
         ),
         monitor_stage3_timeout_sec=float(os.getenv("MONITOR_STAGE3_TIMEOUT_SEC", "120")),
+        intent_classifier_provider=os.getenv("INTENT_CLASSIFIER_PROVIDER", "openai").lower(),
+        intent_classifier_model=os.getenv("INTENT_CLASSIFIER_MODEL", "gpt-4.1-mini"),
+        intent_classifier_timeout=float(os.getenv("INTENT_CLASSIFIER_TIMEOUT", "10")),
+        intent_classifier_confidence_threshold=float(
+            os.getenv("INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD", "0.7")
+        ),
     )

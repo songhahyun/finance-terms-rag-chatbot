@@ -540,11 +540,13 @@ docs: add vercel frontend deployment config
 
 ---
 
-## Task 11 — Add GitHub Actions CI
+## Task 11 — Add GitHub Actions CI and GHCR Backend Image Publishing
 
 ### Objective
 
-Add basic CI to catch broken backend/frontend changes before deployment.
+Add CI to catch broken backend/frontend changes before deployment, and publish the backend Docker image to GHCR so Render can deploy a prebuilt image instead of building the image inside Render.
+
+This avoids Render build memory failures caused by the large deployment dependency set.
 
 ### Actions
 
@@ -561,6 +563,24 @@ Create `.github/workflows/ci.yml` with jobs for:
 
 3. Required Docker check:
    - build backend Docker image
+   - verify the image excludes bundled Chroma DB artifacts
+   - verify the image excludes local/evaluation-only packages
+
+4. GHCR publishing:
+   - on `push` to `dev` and `main`, log in to `ghcr.io` using `GITHUB_TOKEN`
+   - push the backend image to GHCR
+   - publish both a commit-SHA tag and a `latest` tag
+   - use an image name based on the GitHub repository, for example:
+
+```text
+ghcr.io/<owner>/<repo>/backend:latest
+ghcr.io/<owner>/<repo>/backend:<commit-sha>
+```
+
+5. Render deployment mode:
+   - Render should deploy from the prebuilt GHCR image, not build from the GitHub repository
+   - if the GHCR package is private, configure Render registry credentials or make the package accessible to Render
+   - Render environment variables remain configured in the Render UI
 
 ### Acceptance Criteria
 
@@ -569,13 +589,16 @@ Create `.github/workflows/ci.yml` with jobs for:
 - CI does not call paid LLM APIs.
 - CI does not require Ollama.
 - CI includes backend Docker image build.
+- CI publishes the backend Docker image to GHCR on push events.
+- CI tags the image with both `latest` and the commit SHA.
 - CI verifies the backend image can be built without bundled Chroma DB artifacts.
 - CI verifies the deployment dependency set, not the full local/evaluation dependency set.
+- Render can be configured to pull the GHCR backend image instead of building the Docker image itself.
 
 ### Commit Message
 
 ```text
-ci: add backend and frontend checks
+ci: add backend and frontend checks with image publishing
 ```
 
 ---
@@ -613,7 +636,7 @@ GENERATION_PROVIDER=ollama
 GENERATION_PROVIDER=openai
 ```
 
-4. Backend Docker deployment steps.
+4. Backend Docker deployment steps using the GHCR prebuilt image published by GitHub Actions.
 5. Chroma service deployment or local compose steps.
 6. Vercel frontend deployment steps.
 7. Required environment variables.
