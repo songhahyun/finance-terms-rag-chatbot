@@ -56,7 +56,7 @@ npm run dev
 - `admin`: `/chat`, `/admin` 접근 가능
 
 ## 4) 인증 방식 (Admin, General User)
-```
+
 `.env` 파일에 아래 값을 추가할 경우 JWT 기반 인증 모듈이 활성화됩니다.
 
 ```env
@@ -74,36 +74,7 @@ API_ADMIN_ROLE=admin
 - `/api/chat` 및 `/api/chat/stream`: 인증 필요
 - `/api/monitor/summary`, `/api/monitor/recent`: 인증 필요, `admin` 역할만 허용
 
-PowerShell에서 로그인 예시:
-
-```powershell
-$body = @{
-  username = "admin"
-  password = "admin123"
-} | ConvertTo-Json
-
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://localhost:8000/api/auth/login" `
-  -ContentType "application/json" `
-  -Body $body
-```
-
-회원가입 예시:
-
-```powershell
-$body = @{
-  username = "user1"
-  password = "pass1234"
-  role = "user"   # or "admin"
-} | ConvertTo-Json
-
-Invoke-RestMethod `
-  -Method Post `
-  -Uri "http://localhost:8000/api/auth/signup" `
-  -ContentType "application/json" `
-  -Body $body
-```
+FastAPI endpoint별 요청/응답 예시는 `backend/app/README.md`를 참고합니다.
 
 주의:
 - 현재 사용자 계정은 로컬 DB에 저장되지 않습니다.
@@ -278,39 +249,3 @@ RAGAS 평가 파이프라인 실행:
 ```bash
 python -m src.evaluation --generated-csv data/eval/outputs/generation_001_baseline/dense_clova_bge-m3.csv
 ```
-
-## 11) API 요청/응답 예시
-
-`POST /api/chat`
-
-요청 예시:
-
-```json
-{
-  "question": "가산금리란 무엇인가요?",
-  "mode": "hybrid",
-  "k": 5,
-  "language": "ko"
-}
-```
-
-응답 예시:
-
-```json
-{
-  "question": "가산금리란 무엇인가요?",
-  "answer": "가산금리는 기준금리에 신용위험 등을 반영해 추가로 붙는 금리입니다.",
-  "retrieved_ids": ["econ_0009", "econ_0123", "econ_0311"],
-  "sources": [
-    {
-      "chunk_id": "econ_0009",
-      "source": "한국은행 2020_경제금융용어 700선.pdf",
-      "text": "가산금리: ... (문서 본문 일부)"
-    },
-    {
-      "chunk_id": "econ_0123",
-      "source": "한국은행 2020_경제금융용어 700선.pdf",
-      "text": "기준금리와 스프레드 관련 설명 ... (문서 본문 일부)"
-    }
-  ]
-}
