@@ -211,6 +211,10 @@ class RuleBasedQueryClassifier:
                 fixed_answer=NEEDS_WEB_FALLBACK_ANSWER,
             )
 
+        simple_result = self._classify_simple(normalized_query)
+        if simple_result is not None:
+            return simple_result
+
         matched_terms = self._match_finance_terms(query)
         if matched_terms:
             return QueryIntentResult(
@@ -220,10 +224,6 @@ class RuleBasedQueryClassifier:
                 matched_terms=matched_terms,
                 classifier_method=ClassifierMethod.RULE,
             )
-
-        simple_result = self._classify_simple(normalized_query)
-        if simple_result is not None:
-            return simple_result
 
         return QueryIntentResult(
             intent=QueryIntent.CLARIFY,
