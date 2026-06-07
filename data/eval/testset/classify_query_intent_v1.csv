@@ -1,0 +1,31 @@
+id,query,expected_intent,acceptable_intents,category,expected_matched_terms,requires_realtime,expected_fixed_answer_key,notes
+qi001,가산금리란 무엇인가요?,needs_rag,needs_rag,finance_concept,"[""가산금리""]",false,,Dictionary finance term should route to RAG.
+qi002,기준금리와 시장금리의 차이를 설명해줘,needs_rag,needs_rag,finance_concept,"[""기준금리"", ""시장금리""]",false,,Conceptual comparison should use document-grounded finance explanation.
+qi003,ETF의 장점과 위험은 뭐야?,needs_rag,needs_rag,finance_concept,"[""ETF""]",false,,Finance product concept should route to RAG.
+qi004,삼성전자 주가 지금 얼마야?,needs_web,needs_web,realtime_market,[],true,NEEDS_WEB_FALLBACK_ANSWER,Current stock price requires real-time web data.
+qi005,오늘 원달러 환율 알려줘,needs_web,needs_web,realtime_market,[],true,NEEDS_WEB_FALLBACK_ANSWER,Current exchange rate requires real-time web data.
+qi006,최근 기준금리 뉴스 요약해줘,needs_web,needs_web,realtime_market,"[""기준금리""]",true,NEEDS_WEB_FALLBACK_ANSWER,Latest news request should route to web-needed fallback.
+qi007,안녕?,simple,simple,greeting,[],false,GREETING_ANSWER,Greeting should return the fixed greeting answer.
+qi008,hello,simple,simple,greeting,[],false,GREETING_ANSWER,English greeting should return the fixed greeting answer.
+qi009,하이 반가워,simple,simple,greeting,[],false,GREETING_ANSWER,Casual greeting should not trigger RAG.
+qi010,너는 어떤 챗봇이야?,simple,simple,capability,[],false,CAPABILITY_ANSWER,Capability question should describe chatbot scope.
+qi011,어떤 질문에 답할 수 있어?,simple,simple,capability,[],false,CAPABILITY_ANSWER,Supported-question query should return capability answer.
+qi012,경제 금융 말고도 답할 수 있어?,simple,simple,capability,[],false,CAPABILITY_ANSWER,Scope question should return capability answer.
+qi013,오늘 점심 메뉴 추천해줘,simple,simple,unsupported_domain,[],false,UNSUPPORTED_DOMAIN_ANSWER,Non-finance request should be rejected with unsupported-domain answer.
+qi014,날씨 알려줘,simple,simple,unsupported_domain,[],false,UNSUPPORTED_DOMAIN_ANSWER,Weather request is outside finance-term chatbot scope.
+qi015,파이썬 문법 알려줘,simple,simple,unsupported_domain,[],false,UNSUPPORTED_DOMAIN_ANSWER,Programming question should not route to RAG.
+qi016,이거 알려줘,clarify,clarify,ambiguous,[],false,DEFAULT_CLARIFICATION_ANSWER,Query has no subject and should ask for clarification.
+qi017,그거 차이가 뭐야?,clarify,clarify,ambiguous,[],false,DEFAULT_CLARIFICATION_ANSWER,Ambiguous reference lacks enough context.
+qi018,금리와 주가의 관계는?,needs_rag,needs_rag|simple,lexical_trap,"[""금리"", ""주가""]",false,,Market word alone should not imply real-time lookup.
+qi019,파이썬 리스트 컴프리헨션 알려줘,simple,simple,lexical_trap,[],false,UNSUPPORTED_DOMAIN_ANSWER,Substring match such as 리스 inside 리스트 must not send programming query to RAG.
+qi020,뉴스라는 단어의 뜻은 뭐야?,clarify,clarify|simple,lexical_trap,[],false,DEFAULT_CLARIFICATION_ANSWER,The word news alone is not necessarily a real-time finance-news request.
+qi021,예대율은 은행 건전성과 어떤 관련이 있어?,needs_rag,needs_rag,finance_concept,"[""예대율""]",false,,Finance concept relationship should route to RAG.
+qi022,애플 주가 오늘 변동률 알려줘,needs_web,needs_web,realtime_market,[],true,NEEDS_WEB_FALLBACK_ANSWER,Current stock movement requires real-time web data.
+qi023,hi there,simple,simple,greeting,[],false,GREETING_ANSWER,English greeting phrase should return the fixed greeting answer.
+qi024,이 챗봇은 금융 용어만 설명해?,simple,simple,capability,[],false,CAPABILITY_ANSWER,Scope question should return capability answer.
+qi025,파스타 레시피 알려줘,simple,simple,unsupported_domain,[],false,UNSUPPORTED_DOMAIN_ANSWER,Cooking request is outside finance-term chatbot scope.
+qi026,이 용어가 무슨 뜻이야?,clarify,clarify,ambiguous,[],false,DEFAULT_CLARIFICATION_ANSWER,Missing term should ask the user to clarify.
+qi027,주식 리스트 정리하는 파이썬 코드 짜줘,simple,simple,lexical_trap,[],false,UNSUPPORTED_DOMAIN_ANSWER,Programming query with finance-like words should stay outside RAG.
+qi028,공시라는 단어의 일반적인 뜻 알려줘,clarify,clarify|simple,lexical_trap,[],false,DEFAULT_CLARIFICATION_ANSWER,Market-info keyword alone should not imply latest disclosure lookup.
+qi029,환율 효과라는 영화 있어?,simple,simple,lexical_trap,[],false,UNSUPPORTED_DOMAIN_ANSWER,Finance-looking keyword in non-finance context should not route to web or RAG.
+qi030,금리 인상 뉴스가 경제에 미치는 영향 설명해줘,needs_rag,needs_rag|needs_web,lexical_trap,"[""금리""]",false,,News word appears in a conceptual impact question rather than a latest-news request.

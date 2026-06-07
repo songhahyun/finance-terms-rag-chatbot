@@ -8,7 +8,14 @@ from pathlib import Path
 from typing import Any
 
 
+# ---------------------------------------------------------------------------
+# Public result types
+# ---------------------------------------------------------------------------
+
+
 class QueryIntent(StrEnum):
+    """Routing destinations supported by the query intent classifier."""
+
     SIMPLE = "simple"
     NEEDS_RAG = "needs_rag"
     NEEDS_WEB = "needs_web"
@@ -16,6 +23,8 @@ class QueryIntent(StrEnum):
 
 
 class ClassifierMethod(StrEnum):
+    """Classifier sources used to produce a query intent decision."""
+
     RULE = "rule"
     LLM = "llm"
     MERGED = "merged"
@@ -23,6 +32,8 @@ class ClassifierMethod(StrEnum):
 
 @dataclass(frozen=True)
 class QueryIntentResult:
+    """Structured output returned by intent classifiers."""
+
     intent: QueryIntent
     confidence: float
     reason: str
@@ -31,6 +42,8 @@ class QueryIntentResult:
     fixed_answer: str | None = None
 
     def routing_metadata(self) -> dict[str, object]:
+        """Return serializable routing metadata for traces and API responses."""
+
         return {
             "intent": self.intent.value,
             "routing_reason": self.reason,
@@ -42,6 +55,11 @@ class QueryIntentResult:
         }
 
 
+# ---------------------------------------------------------------------------
+# Term normalization and dictionary lookup
+# ---------------------------------------------------------------------------
+
+
 _NORMALIZE_PATTERN = re.compile(r"[\s\-_./]+")
 _ASCII_ALNUM_PATTERN = re.compile(r"[a-z0-9]")
 
@@ -49,6 +67,7 @@ _ASCII_ALNUM_PATTERN = re.compile(r"[a-z0-9]")
 def normalize_term(value: str) -> str:
     """Normalize query and dictionary terms for cheap exact containment checks."""
     return _NORMALIZE_PATTERN.sub("", value).casefold()
+
 
 def _allows_short_substring_match(normalized_term: str) -> bool:
     """Return whether a normalized term can be matched as a short substring."""
@@ -58,11 +77,15 @@ def _allows_short_substring_match(normalized_term: str) -> bool:
 
 @dataclass(frozen=True)
 class FinanceTermDictionary:
+    """In-memory lookup table for finance terms and their normalized forms."""
+
     terms: tuple[str, ...]
     normalized_to_terms: dict[str, tuple[str, ...]]
 
     @classmethod
     def load(cls, path: str | Path) -> FinanceTermDictionary:
+        """Load a TSV user dictionary into normalized term lookup structures."""
+
         term_order: list[str] = []
         normalized: dict[str, list[str]] = {}
         seen_terms: set[str] = set()
@@ -86,6 +109,8 @@ class FinanceTermDictionary:
         )
 
     def find_matches(self, query: str) -> list[str]:
+        """Find finance terms whose normalized form is contained in the query."""
+
         normalized_query = normalize_term(query)
         if not normalized_query:
             return []
@@ -102,6 +127,8 @@ class FinanceTermDictionary:
         return matches
 
     def find_token_matches(self, tokens: list[str]) -> list[str]:
+        """Find finance terms that exactly match normalized tokenizer outputs."""
+
         matches: list[str] = []
         seen: set[str] = set()
         for token in tokens:
@@ -115,8 +142,13 @@ class FinanceTermDictionary:
         return matches
 
 
+# ---------------------------------------------------------------------------
+# Fixed answers and rule patterns
+# ---------------------------------------------------------------------------
+
+
 DEFAULT_CLARIFICATION_ANSWER = "금융 용어 설명이 필요한지, 최신 시세/뉴스가 필요한지 조금 더 구체적으로 질문해주세요."
-NEEDS_WEB_FALLBACK_ANSWER = "현재 시세, 뉴스, 환율처럼 실시간 정보가 필요한 질문입니다. 아직 웹 조회 기능은 연결되지 않았습니다."
+NEEDS_WEB_FALLBACK_ANSWER = "현재 시세, 뉴스, 환율처럼 실시간 정보가 필요한 질문입니다. 웹 조회 기능은 추후 개발 예정입니다."
 GREETING_ANSWER = "안녕하세요. 경제·금융 용어 설명과 관련 질문에 답하는 챗봇입니다."
 CAPABILITY_ANSWER = "경제·금융 용어의 뜻, 관련 개념, 문서 기반 설명 질문에 답할 수 있습니다."
 UNSUPPORTED_DOMAIN_ANSWER = "이 챗봇은 경제·금융 용어 설명에 특화되어 있어 해당 질문에는 답하기 어렵습니다."
@@ -180,13 +212,24 @@ _UNSUPPORTED_PATTERNS = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Rule-based intent classifier
+# ---------------------------------------------------------------------------
+
+
 class RuleBasedQueryClassifier:
+    """Classify queries with deterministic finance-term and pattern matching."""
+
     def __init__(self, dictionary_path: str | Path) -> None:
+        """Initialize dictionary lookup and the Kiwi tokenizer user dictionary."""
+
         self.dictionary = FinanceTermDictionary.load(dictionary_path)
         self._kiwi = self._build_kiwi(dictionary_path)
 
     @staticmethod
     def _build_kiwi(dictionary_path: str | Path) -> Any:
+        """Build a Kiwi tokenizer and load the finance user dictionary if supported."""
+
         try:
             from kiwipiepy import Kiwi  # noqa: PLC0415
         except ImportError as exc:
@@ -199,6 +242,8 @@ class RuleBasedQueryClassifier:
         return kiwi
 
     def classify(self, query: str) -> QueryIntentResult:
+        """Classify a query using current-info patterns, finance terms, and simple rules."""
+
         normalized_query = normalize_term(query)
         if self._has_current_info_signal(normalized_query):
             matched_terms = self._match_finance_terms(query)
@@ -293,6 +338,8 @@ class RuleBasedQueryClassifier:
         return filtered
 
     def _token_forms(self, query: str) -> list[str]:
+        """Tokenize a query with Kiwi and return token surface forms."""
+
         try:
             return [token.form for token in self._kiwi.tokenize(query)]
         except Exception:  # noqa: BLE001
@@ -313,6 +360,8 @@ class RuleBasedQueryClassifier:
 
     @staticmethod
     def _classify_simple(normalized_query: str) -> QueryIntentResult | None:
+        """Classify greetings, capability questions, and unsupported-domain queries."""
+
         if any(normalize_term(pattern) in normalized_query for pattern in _GREETING_PATTERNS):
             return QueryIntentResult(
                 intent=QueryIntent.SIMPLE,
@@ -340,10 +389,17 @@ class RuleBasedQueryClassifier:
         return None
 
 
+# ---------------------------------------------------------------------------
+# Optional OpenAI LLM fallback classifier
+# ---------------------------------------------------------------------------
+
+
 _LLM_ALLOWED_INTENTS = {QueryIntent.SIMPLE, QueryIntent.NEEDS_WEB, QueryIntent.CLARIFY}
 
 
 class OpenAILLMIntentClassifier:
+    """Use an OpenAI chat model to classify queries that rules cannot finalize."""
+
     def __init__(
         self,
         *,
@@ -353,6 +409,8 @@ class OpenAILLMIntentClassifier:
         confidence_threshold: float = 0.7,
         client: Any | None = None,
     ) -> None:
+        """Initialize the OpenAI client or accept an injected test client."""
+
         self._model = model
         self._confidence_threshold = confidence_threshold
         if client is not None:
@@ -367,6 +425,8 @@ class OpenAILLMIntentClassifier:
         self._client = OpenAI(api_key=api_key, timeout=timeout)
 
     def classify(self, query: str) -> QueryIntentResult:
+        """Classify a query with the configured chat model and parse its JSON output."""
+
         try:
             response = self._client.chat.completions.create(
                 model=self._model,
@@ -409,6 +469,8 @@ class OpenAILLMIntentClassifier:
             )
 
     def _parse_response(self, content: str) -> QueryIntentResult:
+        """Parse and validate the LLM JSON response into a query intent result."""
+
         try:
             payload = json.loads(content)
             intent = QueryIntent(str(payload.get("intent", "")))
@@ -448,7 +510,14 @@ class OpenAILLMIntentClassifier:
         )
 
 
+# ---------------------------------------------------------------------------
+# Hybrid classifier facade
+# ---------------------------------------------------------------------------
+
+
 class QueryIntentClassifier:
+    """Coordinate rule and optional LLM classifiers with a small query-result cache."""
+
     def __init__(
         self,
         *,
@@ -456,12 +525,16 @@ class QueryIntentClassifier:
         llm_classifier: OpenAILLMIntentClassifier | None = None,
         cache_size: int = 256,
     ) -> None:
+        """Initialize the classifier facade and bounded insertion-order cache."""
+
         self._rule_classifier = rule_classifier
         self._llm_classifier = llm_classifier
         self._cache_size = max(cache_size, 0)
         self._cache: dict[str, QueryIntentResult] = {}
 
     def classify(self, query: str) -> QueryIntentResult:
+        """Classify a query, using rules first and the LLM only for unresolved cases."""
+
         if query in self._cache:
             return self._cache[query]
         rule_result = self._rule_classifier.classify(query)
@@ -472,6 +545,8 @@ class QueryIntentClassifier:
         return self._remember(query, self._llm_classifier.classify(query))
 
     def _remember(self, query: str, result: QueryIntentResult) -> QueryIntentResult:
+        """Store a classification result in the bounded cache and return it."""
+
         if self._cache_size == 0:
             return result
         if len(self._cache) >= self._cache_size:
@@ -482,7 +557,8 @@ class QueryIntentClassifier:
 
     @staticmethod
     def _is_rule_final(result: QueryIntentResult) -> bool:
+        """Return whether a rule-based result should skip the LLM fallback."""
+
         if result.intent in {QueryIntent.NEEDS_WEB, QueryIntent.NEEDS_RAG, QueryIntent.SIMPLE}:
             return True
         return result.reason != "rule_no_match"
-

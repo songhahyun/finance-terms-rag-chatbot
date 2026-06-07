@@ -1,0 +1,76 @@
+{
+  "total_rows": 30,
+  "strict_intent_accuracy": 0.7666666666666667,
+  "acceptable_intent_accuracy": 0.7666666666666667,
+  "term_exact_match_rate": 0.5333333333333333,
+  "average_term_precision": 0.5983333333333334,
+  "average_term_recall": 0.65,
+  "category_metrics": {
+    "ambiguous": {
+      "count": 3,
+      "strict_intent_accuracy": 0.3333333333333333,
+      "acceptable_intent_accuracy": 0.3333333333333333,
+      "term_exact_match_rate": 0.3333333333333333,
+      "average_term_precision": 0.3333333333333333,
+      "average_term_recall": 0.3333333333333333
+    },
+    "capability": {
+      "count": 4,
+      "strict_intent_accuracy": 0.75,
+      "acceptable_intent_accuracy": 0.75,
+      "term_exact_match_rate": 0.75,
+      "average_term_precision": 0.75,
+      "average_term_recall": 0.75
+    },
+    "finance_concept": {
+      "count": 4,
+      "strict_intent_accuracy": 1.0,
+      "acceptable_intent_accuracy": 1.0,
+      "term_exact_match_rate": 0.0,
+      "average_term_precision": 0.1875,
+      "average_term_recall": 0.5
+    },
+    "greeting": {
+      "count": 4,
+      "strict_intent_accuracy": 0.75,
+      "acceptable_intent_accuracy": 0.75,
+      "term_exact_match_rate": 1.0,
+      "average_term_precision": 1.0,
+      "average_term_recall": 1.0
+    },
+    "lexical_trap": {
+      "count": 7,
+      "strict_intent_accuracy": 0.7142857142857143,
+      "acceptable_intent_accuracy": 0.7142857142857143,
+      "term_exact_match_rate": 0.42857142857142855,
+      "average_term_precision": 0.6,
+      "average_term_recall": 0.6428571428571429
+    },
+    "realtime_market": {
+      "count": 4,
+      "strict_intent_accuracy": 1.0,
+      "acceptable_intent_accuracy": 1.0,
+      "term_exact_match_rate": 0.25,
+      "average_term_precision": 0.25,
+      "average_term_recall": 0.25
+    },
+    "unsupported_domain": {
+      "count": 4,
+      "strict_intent_accuracy": 0.75,
+      "acceptable_intent_accuracy": 0.75,
+      "term_exact_match_rate": 1.0,
+      "average_term_precision": 1.0,
+      "average_term_recall": 1.0
+    }
+  },
+  "confusion_counts": {
+    "clarify->clarify": 2,
+    "clarify->needs_rag": 3,
+    "needs_rag->needs_rag": 6,
+    "needs_web->needs_web": 4,
+    "simple->clarify": 2,
+    "simple->needs_rag": 1,
+    "simple->needs_web": 1,
+    "simple->simple": 11
+  }
+}
