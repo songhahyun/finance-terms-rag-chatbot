@@ -11,6 +11,7 @@ import {
   type Conversation,
 } from "@/lib/conversations";
 import { postChat } from "@/lib/api";
+import { loadChatRetrievalPayload } from "@/lib/retrieval-settings";
 import { Button } from "@/components/ui/button";
 import type { SourceItem } from "@/types/api";
 
@@ -96,7 +97,8 @@ export function ChatPage(): JSX.Element {
     setPendingConversationId(conversationId);
     setError(null);
     try {
-      const response = await postChat({ question: asked, mode: "hybrid", k: 5, language: "ko" }, token);
+      const retrievalSettings = loadChatRetrievalPayload();
+      const response = await postChat({ question: asked, ...retrievalSettings, language: "ko" }, token);
       const answeredAt = new Date().toISOString();
       const assistantMessage: ChatMessage = {
         id: createConversationId(),

@@ -22,7 +22,7 @@ export interface TokenResponse {
 
 export interface ChatRequest {
   question: string;
-  mode: string;
+  mode: "dense" | "bm25" | "hybrid";
   k: number;
   language: "ko" | "en";
 }
