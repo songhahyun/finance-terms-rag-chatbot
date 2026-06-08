@@ -12,6 +12,20 @@ import {
 } from "@/lib/conversations";
 import { postChat } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import type { SourceItem } from "@/types/api";
+
+function sourceTermLabel(source: SourceItem): string {
+  return source.term?.trim() || source.chunk_id || "알 수 없음";
+}
+
+function sourceExplanation(source: SourceItem): string {
+  return source.explanation?.trim() || source.text;
+}
+
+function sourceRelatedTerms(source: SourceItem): string {
+  const terms = source.related_terms?.filter((term) => term.trim() && term.trim() !== "없음") ?? [];
+  return terms.length > 0 ? terms.join(", ") : "없음";
+}
 
 export function ChatPage(): JSX.Element {
   const { token } = useAuth();
@@ -113,11 +127,15 @@ export function ChatPage(): JSX.Element {
                   {message.intent === "needs_rag" && message.sources && message.sources.length > 0 && (
                     <div className="px-4 py-3">
                       <p className="mb-2 text-sm font-bold text-[#4f5f78]">참고 문서 ({message.sources.length})</p>
-                      <div className="space-y-1">
-                        {message.sources.slice(0, 3).map((source, idx) => (
-                          <div key={`${source.chunk_id ?? "na"}-${idx}`} className="flex items-center gap-2 text-sm text-[#5f6f84]">
-                            <FileText className="h-4 w-4" />
-                            <span className="truncate">{source.source ?? "Unknown source"}</span>
+                      <div className="space-y-3">
+                        {message.sources.map((source, idx) => (
+                          <div key={`${source.chunk_id ?? "na"}-${idx}`} className="rounded-lg border border-[#e7edf5] bg-[#f9fbff] px-3 py-3 text-sm text-[#4f5f78]">
+                            <div className="flex items-center gap-2 font-bold text-[#334155]">
+                              <FileText className="h-4 w-4 flex-none text-[#64748b]" />
+                              <span>용어명: {sourceTermLabel(source)}</span>
+                            </div>
+                            <p className="mt-2 leading-6">용어 설명: {sourceExplanation(source)}</p>
+                            <p className="mt-1 text-[#64748b]">연관 용어: {sourceRelatedTerms(source)}</p>
                           </div>
                         ))}
                       </div>
