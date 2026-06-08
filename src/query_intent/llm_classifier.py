@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from src.generation.intent.constants import DEFAULT_CLARIFICATION_ANSWER, _LLM_ALLOWED_INTENTS
-from src.generation.intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
+from src.query_intent.constants import DEFAULT_CLARIFICATION_ANSWER, _LLM_ALLOWED_INTENTS
+from src.query_intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.generation.intent.normalization import normalize_term
+from src.query_intent.normalization import normalize_term
 
 
 # ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from src.generation.intent.constants import (
+from src.query_intent.constants import (
     CAPABILITY_ANSWER,
     DEFAULT_CLARIFICATION_ANSWER,
     GREETING_ANSWER,
@@ -16,9 +16,9 @@ from src.generation.intent.constants import (
     _MARKET_INFO_PATTERNS,
     _UNSUPPORTED_PATTERNS,
 )
-from src.generation.intent.dictionary import FinanceTermDictionary
-from src.generation.intent.normalization import _allows_short_substring_match, normalize_term
-from src.generation.intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
+from src.query_intent.dictionary import FinanceTermDictionary
+from src.query_intent.normalization import _allows_short_substring_match, normalize_term
+from src.query_intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
 
 
 # ---------------------------------------------------------------------------

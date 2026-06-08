@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.generation.intent import (
+from src.query_intent import (
     CAPABILITY_ANSWER,
     DEFAULT_CLARIFICATION_ANSWER,
     GREETING_ANSWER,

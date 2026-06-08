@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from src.generation.intent.llm_classifier import OpenAILLMIntentClassifier
-from src.generation.intent.rule_classifier import RuleBasedQueryClassifier
-from src.generation.intent.types import QueryIntent, QueryIntentResult
+from src.query_intent.llm_classifier import OpenAILLMIntentClassifier
+from src.query_intent.rule_classifier import RuleBasedQueryClassifier
+from src.query_intent.types import QueryIntent, QueryIntentResult
 
 
 # ---------------------------------------------------------------------------

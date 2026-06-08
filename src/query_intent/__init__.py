@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from src.generation.intent.constants import (
+from src.query_intent.constants import (
     CAPABILITY_ANSWER,
     DEFAULT_CLARIFICATION_ANSWER,
     GREETING_ANSWER,
     NEEDS_WEB_FALLBACK_ANSWER,
     UNSUPPORTED_DOMAIN_ANSWER,
 )
-from src.generation.intent.classifier import QueryIntentClassifier
-from src.generation.intent.dictionary import FinanceTermDictionary
-from src.generation.intent.llm_classifier import OpenAILLMIntentClassifier
-from src.generation.intent.normalization import normalize_term
-from src.generation.intent.rule_classifier import RuleBasedQueryClassifier
-from src.generation.intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
+from src.query_intent.classifier import QueryIntentClassifier
+from src.query_intent.dictionary import FinanceTermDictionary
+from src.query_intent.llm_classifier import OpenAILLMIntentClassifier
+from src.query_intent.normalization import normalize_term
+from src.query_intent.rule_classifier import RuleBasedQueryClassifier
+from src.query_intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
 
 __all__ = [
     "CAPABILITY_ANSWER",

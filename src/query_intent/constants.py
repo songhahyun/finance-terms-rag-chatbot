@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.generation.intent.types import QueryIntent
+from src.query_intent.types import QueryIntent
 
 
 # ---------------------------------------------------------------------------

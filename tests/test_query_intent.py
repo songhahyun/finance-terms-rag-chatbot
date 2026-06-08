@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import src.generation.intent as intent_package
+import src.query_intent as intent_package
 from src.generation.query_intent import (
     CAPABILITY_ANSWER,
     ClassifierMethod,
