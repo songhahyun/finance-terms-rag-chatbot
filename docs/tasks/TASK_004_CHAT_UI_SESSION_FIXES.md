@@ -374,6 +374,35 @@ finrag.conversations.user
   - The sidebar and chat header show the improved title.
   - Existing saved conversations without the new title logic still render normally.
 
+### Task 004-12: Frontend: Connect Retrieval Settings to Chat API
+
+- Status: Not started
+- Files:
+  - `frontend-web/src/pages/settings-page.tsx`
+  - `frontend-web/src/pages/chat-page.tsx`
+  - `frontend-web/src/lib/conversations.ts` or a new frontend settings helper module if needed
+  - `frontend-web/src/types/api.ts`
+- Work:
+  - Reuse the settings screen values currently stored in `localStorage`:
+    - `searchMode`
+    - `hybridTopK`
+  - Use `searchMode` as the `mode` value in `postChat`.
+  - Use `hybridTopK` as the `k` value in `postChat` when the selected mode is `hybrid`.
+  - Keep a safe fallback to the current behavior when settings are missing or invalid:
+
+    ```ts
+    mode: "hybrid"
+    k: 5
+    ```
+
+  - Avoid duplicating settings parsing logic between the settings page and chat page.
+  - Ensure frontend settings values are compatible with the backend `ChatRequest` schema.
+- Done when:
+  - Changing `Search 방식 선택` in the settings screen changes the next chat request `mode`.
+  - Changing `Hybrid Search Top-K` in the settings screen changes the next chat request `k` for hybrid mode.
+  - Missing or malformed local settings do not break chat submission.
+  - Frontend build/type checks pass.
+
 ## 5. Proposed Implementation
 
 ### 5.1 Backend Response Schema
@@ -464,6 +493,7 @@ In `app-shell.tsx`:
 - The chatbot loading bubble uses a Bouncing Dots / Three Dots animation.
 - Sidebar can be expanded so recent conversation titles have more horizontal space.
 - New conversation titles summarize the first user question instead of using a fixed truncation only.
+- Settings screen retrieval options are reflected in subsequent chat API requests.
 - Admin and regular user local chat histories are separated after logout/login.
 - Existing chat API consumers remain compatible with `chunk_id`, `source`, and `text`.
 
@@ -475,6 +505,7 @@ In `app-shell.tsx`:
 - Should chat history isolation be username-based only, or should it use a stable backend user id if one is added later?
 - Should conversation title generation remain deterministic in the frontend, or should a backend/LLM title-generation endpoint be added later?
 - What maximum title length should be used for Korean and mixed Korean/English titles?
+- For non-hybrid search modes, should `hybridTopK` still be sent as `k`, or should each search mode have its own top-k setting?
 
 ## 8. Suggested Verification
 
@@ -499,4 +530,5 @@ Manual browser checks:
 - verify source sections are absent for non-RAG answers
 - verify the pending assistant bubble uses animated three dots
 - verify first-question title generation with a long Korean question
+- verify settings screen `searchMode` and `hybridTopK` affect subsequent `/api/chat` payloads
 - verify user-specific conversation history after admin/user logout-login switch
