@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, FileText, SendHorizontal, UserCircle2 } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, FileText, SendHorizontal, UserCircle2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/app/auth-context";
 import {
@@ -36,6 +36,7 @@ export function ChatPage(): JSX.Element {
   const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSourceMessages, setExpandedSourceMessages] = useState<Set<string>>(() => new Set());
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
@@ -99,6 +100,17 @@ export function ChatPage(): JSX.Element {
   };
 
   const messages = selectedConversation?.messages ?? [];
+  const toggleSources = (messageId: string) => {
+    setExpandedSourceMessages((current) => {
+      const next = new Set(current);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="flex h-full min-h-[72vh] flex-col rounded-xl border border-[#e6ebf1] bg-white">
@@ -126,19 +138,32 @@ export function ChatPage(): JSX.Element {
                   <div className="whitespace-pre-wrap border-b border-[#ecf0f5] px-4 py-4 text-[15px] leading-7 text-[#334155]">{message.content}</div>
                   {message.intent === "needs_rag" && message.sources && message.sources.length > 0 && (
                     <div className="px-4 py-3">
-                      <p className="mb-2 text-sm font-bold text-[#4f5f78]">참고 문서 ({message.sources.length})</p>
-                      <div className="space-y-3">
-                        {message.sources.map((source, idx) => (
-                          <div key={`${source.chunk_id ?? "na"}-${idx}`} className="rounded-lg border border-[#e7edf5] bg-[#f9fbff] px-3 py-3 text-sm text-[#4f5f78]">
-                            <div className="flex items-center gap-2 font-bold text-[#334155]">
-                              <FileText className="h-4 w-4 flex-none text-[#64748b]" />
-                              <span>용어명: {sourceTermLabel(source)}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleSources(message.id)}
+                        className="inline-flex items-center gap-2 rounded-md border border-[#d8e0eb] px-3 py-2 text-sm font-bold text-[#4f5f78] hover:bg-[#f8fbff]"
+                      >
+                        {expandedSourceMessages.has(message.id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                        {expandedSourceMessages.has(message.id) ? "참고 문서 숨기기" : "참고 문서 보기"} ({message.sources.length})
+                      </button>
+                      {expandedSourceMessages.has(message.id) && (
+                        <div className="mt-3 space-y-3">
+                          {message.sources.map((source, idx) => (
+                            <div key={`${source.chunk_id ?? "na"}-${idx}`} className="rounded-lg border border-[#e7edf5] bg-[#f9fbff] px-3 py-3 text-sm text-[#4f5f78]">
+                              <div className="flex items-center gap-2 font-bold text-[#334155]">
+                                <FileText className="h-4 w-4 flex-none text-[#64748b]" />
+                                <span>용어명: {sourceTermLabel(source)}</span>
+                              </div>
+                              <p className="mt-2 leading-6">용어 설명: {sourceExplanation(source)}</p>
+                              <p className="mt-1 text-[#64748b]">연관 용어: {sourceRelatedTerms(source)}</p>
                             </div>
-                            <p className="mt-2 leading-6">용어 설명: {sourceExplanation(source)}</p>
-                            <p className="mt-1 text-[#64748b]">연관 용어: {sourceRelatedTerms(source)}</p>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
