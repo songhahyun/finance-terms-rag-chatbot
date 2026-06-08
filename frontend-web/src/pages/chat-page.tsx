@@ -37,6 +37,7 @@ export function ChatPage(): JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedSourceMessages, setExpandedSourceMessages] = useState<Set<string>>(() => new Set());
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
@@ -50,56 +51,72 @@ export function ChatPage(): JSX.Element {
   const ask = async () => {
     if (!token || !question.trim()) return;
     const asked = question.trim();
+    const now = new Date().toISOString();
+    const conversationId = selectedConversation?.id ?? createConversationId();
+    const userMessage: ChatMessage = {
+      id: createConversationId(),
+      role: "user",
+      content: asked,
+      createdAt: now,
+    };
+    const conversationWithUser: Conversation = selectedConversation
+      ? {
+          ...selectedConversation,
+          messages: [...selectedConversation.messages, userMessage],
+          updatedAt: now,
+        }
+      : {
+          id: conversationId,
+          title: createConversationTitle(asked),
+          messages: [userMessage],
+          createdAt: now,
+          updatedAt: now,
+        };
+    const conversationsWithUser = saveConversations([
+      conversationWithUser,
+      ...conversations.filter((conversation) => conversation.id !== conversationId),
+    ]);
+    setConversations(conversationsWithUser);
+    if (!selectedConversation) {
+      navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`, { replace: true });
+    }
+    setQuestion("");
     setIsLoading(true);
+    setPendingConversationId(conversationId);
     setError(null);
     try {
       const response = await postChat({ question: asked, mode: "hybrid", k: 5, language: "ko" }, token);
-      const now = new Date().toISOString();
-      const conversationId = selectedConversation?.id ?? createConversationId();
-      const userMessage: ChatMessage = {
-        id: createConversationId(),
-        role: "user",
-        content: asked,
-        createdAt: now,
-      };
+      const answeredAt = new Date().toISOString();
       const assistantMessage: ChatMessage = {
         id: createConversationId(),
         role: "assistant",
         content: response.answer,
-        createdAt: now,
+        createdAt: answeredAt,
         sources: response.sources,
         intent: response.intent,
       };
-      const nextConversation: Conversation = selectedConversation
-        ? {
-            ...selectedConversation,
-            messages: [...selectedConversation.messages, userMessage, assistantMessage],
-            updatedAt: now,
-          }
-        : {
-            id: conversationId,
-            title: createConversationTitle(asked),
-            messages: [userMessage, assistantMessage],
-            createdAt: now,
-            updatedAt: now,
-          };
+      const latestConversations = loadConversations();
+      const latestConversation = latestConversations.find((conversation) => conversation.id === conversationId) ?? conversationWithUser;
+      const nextConversation: Conversation = {
+        ...latestConversation,
+        messages: [...latestConversation.messages, assistantMessage],
+        updatedAt: answeredAt,
+      };
       const nextConversations = saveConversations([
         nextConversation,
-        ...conversations.filter((conversation) => conversation.id !== conversationId),
+        ...latestConversations.filter((conversation) => conversation.id !== conversationId),
       ]);
       setConversations(nextConversations);
-      if (!selectedConversation) {
-        navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`, { replace: true });
-      }
-      setQuestion("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "답변 생성에 실패했습니다.");
     } finally {
       setIsLoading(false);
+      setPendingConversationId(null);
     }
   };
 
   const messages = selectedConversation?.messages ?? [];
+  const showPendingBubble = isLoading && pendingConversationId === selectedConversation?.id;
   const toggleSources = (messageId: string) => {
     setExpandedSourceMessages((current) => {
       const next = new Set(current);
@@ -173,6 +190,16 @@ export function ChatPage(): JSX.Element {
         ) : (
           <div className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-dashed border-[#dbe2ec] bg-[#f9fbff] text-sm text-[#8a97aa]">
             질문을 입력하면 대화가 시작됩니다.
+          </div>
+        )}
+        {showPendingBubble && (
+          <div className="flex items-start gap-3">
+            <div className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#0b4476] text-white">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div className="rounded-xl border border-[#dfe5ed] bg-white px-4 py-4 text-[15px] font-bold text-[#64748b]">
+              <span className="inline-block animate-pulse">...</span>
+            </div>
           </div>
         )}
       </div>
