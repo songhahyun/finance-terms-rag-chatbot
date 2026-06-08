@@ -85,14 +85,7 @@ class RAGService:
 
     @staticmethod
     def _serialize_result(question: str, result: dict[str, Any]) -> dict[str, Any]:
-        sources = [
-            {
-                "chunk_id": doc.metadata.get("chunk_id"),
-                "source": doc.metadata.get("source"),
-                "text": doc.page_content,
-            }
-            for doc in result.get("contexts", [])
-        ]
+        sources = [RAGService._serialize_source(doc) for doc in result.get("contexts", [])]
         return {
             "question": question,
             "answer": result.get("answer", ""),
@@ -102,6 +95,49 @@ class RAGService:
             "sources": sources,
             "monitoring": result.get("monitoring"),
         }
+
+    @staticmethod
+    def _serialize_source(doc: Any) -> dict[str, Any]:
+        """Serialize a retrieved document for chat API source display."""
+        metadata = getattr(doc, "metadata", {}) or {}
+        text = getattr(doc, "page_content", "")
+        term = metadata.get("term")
+        return {
+            "chunk_id": metadata.get("chunk_id"),
+            "source": metadata.get("source"),
+            "text": text,
+            "term": term,
+            "explanation": RAGService._source_explanation(text, term),
+            "related_terms": RAGService._normalize_related_terms(metadata.get("related_terms")),
+        }
+
+    @staticmethod
+    def _source_explanation(text: str, term: Any) -> str:
+        """Return source text without the leading term heading when present."""
+        if not isinstance(term, str) or not term.strip():
+            return text
+        stripped_term = term.strip()
+        stripped_text = text.strip()
+        if stripped_text == stripped_term:
+            return ""
+        prefix = f"{stripped_term}\n\n"
+        if stripped_text.startswith(prefix):
+            return stripped_text[len(prefix) :].strip()
+        return text
+
+    @staticmethod
+    def _normalize_related_terms(value: Any) -> list[str]:
+        """Normalize source related terms into a clean string list."""
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip() and str(item).strip() != "없음"]
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped or stripped == "없음":
+                return []
+            return [item.strip() for item in stripped.split(",") if item.strip() and item.strip() != "없음"]
+        return [str(value).strip()] if str(value).strip() and str(value).strip() != "없음" else []
 
     def answer(self, request: RAGRequest, *, on_chunk: Callable[[str], None] | None = None) -> dict[str, Any]:
         trace = self._monitor.start_trace(

@@ -10,7 +10,16 @@ def _response_payload() -> dict[str, object]:
         "question": "가산금리란?",
         "answer": "답변",
         "retrieved_ids": ["chunk-1"],
-        "sources": [{"chunk_id": "chunk-1", "source": "source.pdf", "text": "본문"}],
+        "sources": [
+            {
+                "chunk_id": "chunk-1",
+                "source": "source.pdf",
+                "text": "가산금리\n\n본문",
+                "term": "가산금리",
+                "explanation": "본문",
+                "related_terms": ["금리"],
+            }
+        ],
         "intent": "needs_rag",
         "routing_reason": "matched_finance_terms",
         "matched_terms": ["가산금리"],
@@ -27,6 +36,9 @@ def test_chat_response_includes_routing_metadata() -> None:
     assert dumped["answer"] == "답변"
     assert dumped["retrieved_ids"] == ["chunk-1"]
     assert dumped["sources"][0]["chunk_id"] == "chunk-1"
+    assert dumped["sources"][0]["term"] == "가산금리"
+    assert dumped["sources"][0]["explanation"] == "본문"
+    assert dumped["sources"][0]["related_terms"] == ["금리"]
     assert dumped["intent"] == "needs_rag"
     assert dumped["routing_reason"] == "matched_finance_terms"
     assert dumped["matched_terms"] == ["가산금리"]
