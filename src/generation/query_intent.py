@@ -1,78 +1,26 @@
 from __future__ import annotations
 
 import json
-import re
-from dataclasses import dataclass, field
-from enum import StrEnum
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
-# ---------------------------------------------------------------------------
-# Public result types
-# ---------------------------------------------------------------------------
-
-
-class QueryIntent(StrEnum):
-    """Routing destinations supported by the query intent classifier."""
-
-    SIMPLE = "simple"
-    NEEDS_RAG = "needs_rag"
-    NEEDS_WEB = "needs_web"
-    CLARIFY = "clarify"
-
-
-class ClassifierMethod(StrEnum):
-    """Classifier sources used to produce a query intent decision."""
-
-    RULE = "rule"
-    LLM = "llm"
-    MERGED = "merged"
-
-
-@dataclass(frozen=True)
-class QueryIntentResult:
-    """Structured output returned by intent classifiers."""
-
-    intent: QueryIntent
-    confidence: float
-    reason: str
-    matched_terms: list[str] = field(default_factory=list)
-    classifier_method: ClassifierMethod = ClassifierMethod.RULE
-    fixed_answer: str | None = None
-
-    def routing_metadata(self) -> dict[str, object]:
-        """Return serializable routing metadata for traces and API responses."""
-
-        return {
-            "intent": self.intent.value,
-            "routing_reason": self.reason,
-            "matched_terms": list(self.matched_terms),
-            "classifier": {
-                "method": self.classifier_method.value,
-                "confidence": self.confidence,
-            },
-        }
-
-
-# ---------------------------------------------------------------------------
-# Term normalization and dictionary lookup
-# ---------------------------------------------------------------------------
-
-
-_NORMALIZE_PATTERN = re.compile(r"[\s\-_./]+")
-_ASCII_ALNUM_PATTERN = re.compile(r"[a-z0-9]")
-
-
-def normalize_term(value: str) -> str:
-    """Normalize query and dictionary terms for cheap exact containment checks."""
-    return _NORMALIZE_PATTERN.sub("", value).casefold()
-
-
-def _allows_short_substring_match(normalized_term: str) -> bool:
-    """Return whether a normalized term can be matched as a short substring."""
-
-    return bool(_ASCII_ALNUM_PATTERN.search(normalized_term))
+from src.generation.intent.constants import (
+    CAPABILITY_ANSWER,
+    DEFAULT_CLARIFICATION_ANSWER,
+    GREETING_ANSWER,
+    NEEDS_WEB_FALLBACK_ANSWER,
+    UNSUPPORTED_DOMAIN_ANSWER,
+    _CAPABILITY_PATTERNS,
+    _CONCEPTUAL_QUERY_PATTERNS,
+    _CURRENT_INFO_PATTERNS,
+    _GREETING_PATTERNS,
+    _LLM_ALLOWED_INTENTS,
+    _MARKET_INFO_PATTERNS,
+    _UNSUPPORTED_PATTERNS,
+)
+from src.generation.intent.normalization import _allows_short_substring_match, normalize_term
+from src.generation.intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
 
 
 @dataclass(frozen=True)
@@ -140,76 +88,6 @@ class FinanceTermDictionary:
                     seen.add(term)
                     matches.append(term)
         return matches
-
-
-# ---------------------------------------------------------------------------
-# Fixed answers and rule patterns
-# ---------------------------------------------------------------------------
-
-
-DEFAULT_CLARIFICATION_ANSWER = "금융 용어 설명이 필요한지, 최신 시세/뉴스가 필요한지 조금 더 구체적으로 질문해주세요."
-NEEDS_WEB_FALLBACK_ANSWER = "현재 시세, 뉴스, 환율처럼 실시간 정보가 필요한 질문입니다. 웹 조회 기능은 추후 개발 예정입니다."
-GREETING_ANSWER = "안녕하세요. 경제·금융 용어 설명과 관련 질문에 답하는 챗봇입니다."
-CAPABILITY_ANSWER = "경제·금융 용어의 뜻, 관련 개념, 문서 기반 설명 질문에 답할 수 있습니다."
-UNSUPPORTED_DOMAIN_ANSWER = "이 챗봇은 경제·금융 용어 설명에 특화되어 있어 해당 질문에는 답하기 어렵습니다."
-
-_CURRENT_INFO_PATTERNS = (
-    "오늘",
-    "어제",
-    "내일",
-    "최근",
-    "최신",
-    "현재",
-    "실시간",
-    "지금",
-    "today",
-    "yesterday",
-    "tomorrow",
-    "latest",
-    "recent",
-    "now",
-    "current",
-)
-_MARKET_INFO_PATTERNS = (
-    "주가",
-    "시세",
-    "환율",
-    "뉴스",
-    "공시",
-    "현재값",
-    "price",
-    "stockprice",
-    "stock",
-    "exchangerate",
-    "news",
-)
-_CONCEPTUAL_QUERY_PATTERNS = (
-    "관계",
-    "차이",
-    "뜻",
-    "의미",
-    "개념",
-    "설명",
-    "무엇",
-    "뭐야",
-    "원리",
-    "relationship",
-    "difference",
-    "meaning",
-    "concept",
-    "explain",
-)
-_GREETING_PATTERNS = ("안녕", "hello", "hi")
-_CAPABILITY_PATTERNS = ("어떤챗봇", "무슨챗봇", "어떤질문", "답할수", "할수있어", "capability")
-_UNSUPPORTED_PATTERNS = (
-    "점심",
-    "메뉴",
-    "날씨",
-    "파이썬",
-    "python",
-    "리스트컴프리헨션",
-    "listcomprehension",
-)
 
 
 # ---------------------------------------------------------------------------
@@ -392,9 +270,6 @@ class RuleBasedQueryClassifier:
 # ---------------------------------------------------------------------------
 # Optional OpenAI LLM fallback classifier
 # ---------------------------------------------------------------------------
-
-
-_LLM_ALLOWED_INTENTS = {QueryIntent.SIMPLE, QueryIntent.NEEDS_WEB, QueryIntent.CLARIFY}
 
 
 class OpenAILLMIntentClassifier:
