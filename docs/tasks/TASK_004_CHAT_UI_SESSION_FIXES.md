@@ -330,6 +330,50 @@ finrag.conversations.user
   - Automated checks pass or failures are documented.
   - Manual acceptance criteria are checked.
 
+### Task 004-10: Frontend: Upgrade Pending Animation to Bouncing Dots
+
+- Status: Not started
+- Files:
+  - `frontend-web/src/pages/chat-page.tsx`
+  - `frontend-web/src/styles.css`
+- Work:
+  - Upgrade the pending assistant bubble animation from a repeated text `"..."` indicator to a Bouncing Dots / Three Dots animation.
+  - Render three small dots inside the assistant bubble.
+  - Animate the dots with staggered vertical bounce or opacity timing.
+  - Keep the animation visually aligned with the existing chatbot avatar and message bubble style.
+- Done when:
+  - While the chatbot answer is being generated, the pending assistant bubble shows three animated dots instead of static or repeated text.
+  - The animation does not shift the message layout while running.
+  - The animation clears when the real assistant answer is rendered or when the request fails.
+
+### Task 004-11: Frontend: Generate Better Conversation Titles
+
+- Status: Not started
+- Files:
+  - `frontend-web/src/lib/conversations.ts`
+  - `frontend-web/src/pages/chat-page.tsx`
+  - `frontend-web/src/app/app-shell.tsx`
+- Work:
+  - Improve chat room title generation so titles summarize the user's first question instead of cutting it at a fixed character count.
+  - Avoid titles such as:
+
+    ```text
+    sk 하이닉스 올해 실적 전망 어...
+    ```
+
+  - Prefer concise titles such as:
+
+    ```text
+    sk 하이닉스 올해 실적 전망
+    ```
+
+  - Implement a deterministic frontend title helper first, using simple Korean question-ending cleanup and length control.
+  - Keep title generation local to the frontend unless the task document is updated to introduce an LLM/backend title-generation API.
+- Done when:
+  - A first user question like `sk 하이닉스 올해 실적 전망 어떻게 보나요?` produces a title close to `sk 하이닉스 올해 실적 전망`.
+  - The sidebar and chat header show the improved title.
+  - Existing saved conversations without the new title logic still render normally.
+
 ## 5. Proposed Implementation
 
 ### 5.1 Backend Response Schema
@@ -417,7 +461,9 @@ In `app-shell.tsx`:
 - Opening the toggle shows all returned sources, not only the first 3.
 - Each source displays term name, explanation, and related terms instead of a raw file path.
 - Sending a question immediately shows the user's message and a chatbot loading bubble.
+- The chatbot loading bubble uses a Bouncing Dots / Three Dots animation.
 - Sidebar can be expanded so recent conversation titles have more horizontal space.
+- New conversation titles summarize the first user question instead of using a fixed truncation only.
 - Admin and regular user local chat histories are separated after logout/login.
 - Existing chat API consumers remain compatible with `chunk_id`, `source`, and `text`.
 
@@ -427,6 +473,8 @@ In `app-shell.tsx`:
 - Should expanded/collapsed sidebar state persist in `localStorage`?
 - Should source explanations be shown in full, or should long explanations be clamped with a separate "더보기" interaction?
 - Should chat history isolation be username-based only, or should it use a stable backend user id if one is added later?
+- Should conversation title generation remain deterministic in the frontend, or should a backend/LLM title-generation endpoint be added later?
+- What maximum title length should be used for Korean and mixed Korean/English titles?
 
 ## 8. Suggested Verification
 
@@ -449,4 +497,6 @@ Manual browser checks:
 - ask a current-market question that routes to `needs_web`
 - ask an ambiguous question that routes to `clarify`
 - verify source sections are absent for non-RAG answers
+- verify the pending assistant bubble uses animated three dots
+- verify first-question title generation with a long Korean question
 - verify user-specific conversation history after admin/user logout-login switch
