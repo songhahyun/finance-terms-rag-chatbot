@@ -110,7 +110,7 @@ export function ChatPage(): JSX.Element {
                 </div>
                 <div className="w-full rounded-xl border border-[#dfe5ed] bg-white">
                   <div className="whitespace-pre-wrap border-b border-[#ecf0f5] px-4 py-4 text-[15px] leading-7 text-[#334155]">{message.content}</div>
-                  {message.sources && (
+                  {message.intent === "needs_rag" && message.sources && message.sources.length > 0 && (
                     <div className="px-4 py-3">
                       <p className="mb-2 text-sm font-bold text-[#4f5f78]">참고 문서 ({message.sources.length})</p>
                       <div className="space-y-1">
