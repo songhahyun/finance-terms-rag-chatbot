@@ -9,6 +9,7 @@ export type ChatMessage = {
   content: string;
   createdAt: string;
   sources?: ChatResponse["sources"];
+  intent?: ChatResponse["intent"];
 };
 
 export type Conversation = {

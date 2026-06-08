@@ -53,6 +53,7 @@ export function ChatPage(): JSX.Element {
         content: response.answer,
         createdAt: now,
         sources: response.sources,
+        intent: response.intent,
       };
       const nextConversation: Conversation = selectedConversation
         ? {

@@ -27,10 +27,20 @@ export interface ChatRequest {
   language: "ko" | "en";
 }
 
+export type ChatIntent = "needs_rag" | "needs_web" | "clarify" | "simple";
+
 export interface SourceItem {
   chunk_id: string | null;
   source: string | null;
   text: string;
+  term?: string | null;
+  explanation?: string | null;
+  related_terms?: string[];
+}
+
+export interface ClassifierInfo {
+  method: string;
+  confidence: number;
 }
 
 export interface ChatResponse {
@@ -38,6 +48,10 @@ export interface ChatResponse {
   answer: string;
   retrieved_ids: Array<string | null>;
   sources: SourceItem[];
+  intent: ChatIntent;
+  routing_reason: string;
+  matched_terms: string[];
+  classifier: ClassifierInfo;
 }
 
 export interface MonitorSummaryItem {
