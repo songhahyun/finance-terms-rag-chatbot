@@ -27,6 +27,16 @@ function sourceRelatedTerms(source: SourceItem): string {
   return terms.length > 0 ? terms.join(", ") : "없음";
 }
 
+function TypingDots(): JSX.Element {
+  return (
+    <span className="chat-typing-dots" aria-label="답변 생성 중" role="status">
+      <span className="chat-typing-dot" />
+      <span className="chat-typing-dot" />
+      <span className="chat-typing-dot" />
+    </span>
+  );
+}
+
 export function ChatPage(): JSX.Element {
   const { token, user } = useAuth();
   const navigate = useNavigate();
@@ -198,8 +208,8 @@ export function ChatPage(): JSX.Element {
             <div className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#0b4476] text-white">
               <Bot className="h-5 w-5" />
             </div>
-            <div className="rounded-xl border border-[#dfe5ed] bg-white px-4 py-4 text-[15px] font-bold text-[#64748b]">
-              <span className="inline-block animate-pulse">...</span>
+            <div className="rounded-xl border border-[#dfe5ed] bg-white px-4 py-4">
+              <TypingDots />
             </div>
           </div>
         )}
