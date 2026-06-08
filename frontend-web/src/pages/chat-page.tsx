@@ -28,12 +28,13 @@ function sourceRelatedTerms(source: SourceItem): string {
 }
 
 export function ChatPage(): JSX.Element {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedConversationId = searchParams.get("conversationId");
+  const storageUsername = user?.username;
   const [question, setQuestion] = useState("");
-  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations());
+  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations(storageUsername));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedSourceMessages, setExpandedSourceMessages] = useState<Set<string>>(() => new Set());
@@ -45,8 +46,8 @@ export function ChatPage(): JSX.Element {
   );
 
   useEffect(() => {
-    setConversations(loadConversations());
-  }, [selectedConversationId]);
+    setConversations(loadConversations(storageUsername));
+  }, [selectedConversationId, storageUsername]);
 
   const ask = async () => {
     if (!token || !question.trim()) return;
@@ -72,10 +73,10 @@ export function ChatPage(): JSX.Element {
           createdAt: now,
           updatedAt: now,
         };
-    const conversationsWithUser = saveConversations([
-      conversationWithUser,
-      ...conversations.filter((conversation) => conversation.id !== conversationId),
-    ]);
+    const conversationsWithUser = saveConversations(
+      [conversationWithUser, ...conversations.filter((conversation) => conversation.id !== conversationId)],
+      storageUsername,
+    );
     setConversations(conversationsWithUser);
     if (!selectedConversation) {
       navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`, { replace: true });
@@ -95,17 +96,17 @@ export function ChatPage(): JSX.Element {
         sources: response.sources,
         intent: response.intent,
       };
-      const latestConversations = loadConversations();
+      const latestConversations = loadConversations(storageUsername);
       const latestConversation = latestConversations.find((conversation) => conversation.id === conversationId) ?? conversationWithUser;
       const nextConversation: Conversation = {
         ...latestConversation,
         messages: [...latestConversation.messages, assistantMessage],
         updatedAt: answeredAt,
       };
-      const nextConversations = saveConversations([
-        nextConversation,
-        ...latestConversations.filter((conversation) => conversation.id !== conversationId),
-      ]);
+      const nextConversations = saveConversations(
+        [nextConversation, ...latestConversations.filter((conversation) => conversation.id !== conversationId)],
+        storageUsername,
+      );
       setConversations(nextConversations);
     } catch (err) {
       setError(err instanceof Error ? err.message : "답변 생성에 실패했습니다.");

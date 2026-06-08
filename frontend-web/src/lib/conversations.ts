@@ -33,6 +33,11 @@ export function createConversationId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+export function conversationsStorageKey(username?: string | null): string {
+  const normalized = username?.trim();
+  return normalized ? `${CONVERSATIONS_STORAGE_KEY}.${normalized}` : `${CONVERSATIONS_STORAGE_KEY}.anonymous`;
+}
+
 function isConversation(value: unknown): value is Conversation {
   if (!value || typeof value !== "object") return false;
   const item = value as Partial<Conversation>;
@@ -45,9 +50,9 @@ function isConversation(value: unknown): value is Conversation {
   );
 }
 
-export function loadConversations(): Conversation[] {
+export function loadConversations(username?: string | null): Conversation[] {
   try {
-    const raw = localStorage.getItem(CONVERSATIONS_STORAGE_KEY);
+    const raw = localStorage.getItem(conversationsStorageKey(username));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -57,9 +62,9 @@ export function loadConversations(): Conversation[] {
   }
 }
 
-export function saveConversations(conversations: Conversation[]): Conversation[] {
+export function saveConversations(conversations: Conversation[], username?: string | null): Conversation[] {
   const sorted = [...conversations].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 10);
-  localStorage.setItem(CONVERSATIONS_STORAGE_KEY, JSON.stringify(sorted));
+  localStorage.setItem(conversationsStorageKey(username), JSON.stringify(sorted));
   window.dispatchEvent(new Event(CONVERSATIONS_CHANGED_EVENT));
   return sorted;
 }

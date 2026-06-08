@@ -11,7 +11,8 @@ export function AppShell(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = Boolean(user?.roles.includes("admin"));
-  const [recentConversations, setRecentConversations] = useState<Conversation[]>(() => loadConversations());
+  const storageUsername = user?.username;
+  const [recentConversations, setRecentConversations] = useState<Conversation[]>(() => loadConversations(storageUsername));
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   const handleLogout = () => {
@@ -25,7 +26,7 @@ export function AppShell(): JSX.Element {
 
   useEffect(() => {
     const syncConversations = () => {
-      setRecentConversations(loadConversations());
+      setRecentConversations(loadConversations(storageUsername));
     };
 
     window.addEventListener("storage", syncConversations);
@@ -34,7 +35,7 @@ export function AppShell(): JSX.Element {
       window.removeEventListener("storage", syncConversations);
       window.removeEventListener(CONVERSATIONS_CHANGED_EVENT, syncConversations);
     };
-  }, []);
+  }, [storageUsername]);
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] p-3 md:p-5">
