@@ -2,16 +2,38 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import src.generation.intent as intent_package
 from src.generation.query_intent import (
+    CAPABILITY_ANSWER,
     ClassifierMethod,
+    DEFAULT_CLARIFICATION_ANSWER,
     FinanceTermDictionary,
+    GREETING_ANSWER,
+    NEEDS_WEB_FALLBACK_ANSWER,
     OpenAILLMIntentClassifier,
     QueryIntentClassifier,
     QueryIntent,
     QueryIntentResult,
     RuleBasedQueryClassifier,
+    UNSUPPORTED_DOMAIN_ANSWER,
     normalize_term,
 )
+
+
+def test_query_intent_facade_exports_same_objects_as_intent_package() -> None:
+    assert CAPABILITY_ANSWER is intent_package.CAPABILITY_ANSWER
+    assert ClassifierMethod is intent_package.ClassifierMethod
+    assert DEFAULT_CLARIFICATION_ANSWER is intent_package.DEFAULT_CLARIFICATION_ANSWER
+    assert FinanceTermDictionary is intent_package.FinanceTermDictionary
+    assert GREETING_ANSWER is intent_package.GREETING_ANSWER
+    assert NEEDS_WEB_FALLBACK_ANSWER is intent_package.NEEDS_WEB_FALLBACK_ANSWER
+    assert OpenAILLMIntentClassifier is intent_package.OpenAILLMIntentClassifier
+    assert QueryIntent is intent_package.QueryIntent
+    assert QueryIntentClassifier is intent_package.QueryIntentClassifier
+    assert QueryIntentResult is intent_package.QueryIntentResult
+    assert RuleBasedQueryClassifier is intent_package.RuleBasedQueryClassifier
+    assert UNSUPPORTED_DOMAIN_ANSWER is intent_package.UNSUPPORTED_DOMAIN_ANSWER
+    assert normalize_term is intent_package.normalize_term
 
 
 def test_query_intent_result_metadata() -> None:
