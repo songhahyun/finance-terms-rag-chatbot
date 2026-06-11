@@ -75,8 +75,18 @@ export async function fetchMonitorSummary(token: string): Promise<MonitorSummary
   });
 }
 
-export async function fetchMonitorRecent(token: string, limit = 20): Promise<MonitorRecentResponse> {
-  return request<MonitorRecentResponse>(`/monitor/recent?limit=${limit}`, {
+export async function fetchMonitorRecent(
+  token: string,
+  limit = 20,
+  page = 1,
+  errorsOnly = false,
+): Promise<MonitorRecentResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    page: String(page),
+    errors_only: String(errorsOnly),
+  });
+  return request<MonitorRecentResponse>(`/monitor/recent?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 }

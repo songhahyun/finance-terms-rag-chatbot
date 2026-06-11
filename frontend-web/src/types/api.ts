@@ -57,33 +57,74 @@ export interface ChatResponse {
 export interface MonitorSummaryItem {
   stage: string;
   count: number;
+  success_count: number;
   success_rate: number;
   avg_elapsed_sec: number;
   avg_throughput: number;
   throughput_unit: string;
 }
 
+export interface DashboardStageSummary {
+  total_rows: number;
+  success_count: number;
+  fail_count: number;
+  avg_elapsed_sec: number;
+  success_rate: number;
+  throughput: Record<string, number>;
+}
+
 export interface MonitorSummaryResponse {
-  total_queries: number;
-  stage_count: number;
-  stage_summary: MonitorSummaryItem[];
+  trace_count: number;
+  stage_summary: Record<string, MonitorSummaryItem>;
+  dashboard_stage_summary: Record<string, DashboardStageSummary>;
+  total_rows: number;
+  error_rows: number;
+  warning_rows: number;
+  last_refresh: string;
 }
 
 export interface MonitorRecentItem {
-  timestamp: string;
   trace_id: string;
   query: string;
+  created_at: string;
+  metadata: Record<string, unknown>;
+  stages: MonitorSummaryItem[];
+}
+
+export interface MonitorRecentRow {
+  timestamp: string;
+  trace_id: string;
   stage: string;
-  success: boolean;
+  user_query: string;
+  generated_answer: string;
+  status: "success" | "fail" | string;
+  error_message: string;
   elapsed_sec: number;
   throughput: number;
-  throughput_unit: string;
-  work_units: number;
-  error: string | null;
+}
+
+export interface MonitorRecentPagingPage {
+  page: number;
+  label: string;
+  start_row: number;
+  end_row: number;
+}
+
+export interface MonitorRecentPaging {
+  limit: number;
+  page: number;
+  total_rows: number;
+  total_pages: number;
+  start_row: number;
+  end_row: number;
+  errors_only: boolean;
+  pages: MonitorRecentPagingPage[];
 }
 
 export interface MonitorRecentResponse {
   items: MonitorRecentItem[];
+  rows: MonitorRecentRow[];
+  paging: MonitorRecentPaging;
 }
 
 export interface KnowledgeDocument {
