@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 from collections import defaultdict, deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -107,7 +108,10 @@ class PipelineMonitor:
         """Initialize in-memory monitoring state and optional logging.
         Keep a bounded history of recent query traces."""
         self._history: deque[QueryTrace] = deque(maxlen=max_history)
+        self._rows: deque[dict[str, Any]] = deque(maxlen=max_history)
         self._lock = Lock()
+        self._log_path = Path(log_path) if log_path is not None else None
+        self._load_log_rows()
         self._logger = self._build_logger(log_path)
 
     @staticmethod
@@ -154,6 +158,7 @@ class PipelineMonitor:
     def _log_stage_metric(self, trace_id: str, metric: StageMetric) -> None:
         """Write one stage metric to the configured logger.
         Skip logging entirely when no logger has been configured."""
+        self._append_metric_row(trace_id, metric)
         if self._logger is None:
             return
         metadata: dict[str, Any] = {}
@@ -174,6 +179,100 @@ class PipelineMonitor:
             metric.error or "-",
             metadata,
         )
+
+    def _append_metric_row(self, trace_id: str, metric: StageMetric) -> None:
+        """Add one in-process stage metric to the bounded row queue."""
+        query = ""
+        with self._lock:
+            for trace in self._history:
+                if trace.trace_id == trace_id:
+                    query = trace.query
+                    break
+            self._rows.append(
+                {
+                    "timestamp": metric.ended_at,
+                    "trace_id": trace_id,
+                    "stage": metric.stage,
+                    "user_query": query,
+                    "generated_answer": "",
+                    "status": "success" if metric.success else "fail",
+                    "error_message": metric.error or "",
+                    "elapsed_sec": metric.elapsed_sec,
+                    "throughput": metric.throughput,
+                }
+            )
+
+    def _load_log_rows(self) -> None:
+        """Load JSON-line monitor rows from the configured log file."""
+        if self._log_path is None or not self._log_path.exists():
+            return
+        for line in self._log_path.read_text(encoding="utf-8").splitlines():
+            row = self._parse_log_row(line)
+            if row is None:
+                continue
+            self._rows.append(row)
+
+    @staticmethod
+    def _parse_log_row(line: str) -> dict[str, Any] | None:
+        """Parse one JSON-line monitor row into the dashboard schema."""
+        text = line.strip()
+        if not text:
+            return None
+        try:
+            raw = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+
+        if isinstance(raw, list):
+            values = list(raw)
+            keys = [
+                "timestamp",
+                "trace_id",
+                "stage",
+                "user_query",
+                "generated_answer",
+                "status",
+                "error_message",
+                "elapsed_sec",
+                "throughput",
+            ]
+            data = {key: values[index] if index < len(values) else "" for index, key in enumerate(keys)}
+        elif isinstance(raw, dict):
+            values = list(raw.values())
+            data = dict(raw)
+            data["timestamp"] = values[0] if values else data.get("timestamp", "")
+        else:
+            return None
+
+        return {
+            "timestamp": str(data.get("timestamp", "")),
+            "trace_id": str(data.get("trace_id", "")),
+            "stage": str(data.get("stage", "")),
+            "user_query": str(data.get("user_query", "")),
+            "generated_answer": str(data.get("generated_answer", "")),
+            "status": PipelineMonitor._normalize_status(data.get("status")),
+            "error_message": str(data.get("error_message", "")),
+            "elapsed_sec": PipelineMonitor._to_float(data.get("elapsed_sec")),
+            "throughput": PipelineMonitor._to_float(data.get("throughput")),
+        }
+
+    @staticmethod
+    def _normalize_status(value: Any) -> str:
+        """Normalize status values to the dashboard success/fail vocabulary."""
+        text = str(value).strip().lower()
+        if text in {"success", "true", "ok"}:
+            return "success"
+        if text in {"fail", "failed", "false", "error"}:
+            return "fail"
+        return text
+
+    @staticmethod
+    def _to_float(value: Any) -> float:
+        """Convert numeric log values to float, defaulting invalid data to zero."""
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
 
     def _log_trace_started(self, trace: QueryTrace) -> None:
         """Log the start of a new traced query.
@@ -215,6 +314,7 @@ class PipelineMonitor:
         grouped: dict[str, list[StageMetric]] = defaultdict(list)
         with self._lock:
             traces = list(self._history)
+            rows = list(self._rows)
 
         for trace in traces:
             for metric in trace.stage_metrics:
@@ -240,4 +340,8 @@ class PipelineMonitor:
         return {
             "trace_count": len(traces),
             "stage_summary": summary_by_stage,
+            "total_rows": len(rows),
+            "error_rows": sum(1 for row in rows if row.get("status") == "fail"),
+            "warning_rows": 0,
+            "last_refresh": datetime.now(timezone.utc).isoformat(),
         }
