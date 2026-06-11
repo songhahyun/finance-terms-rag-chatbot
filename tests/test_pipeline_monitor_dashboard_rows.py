@@ -85,3 +85,48 @@ def test_monitor_summary_aggregates_stage_metrics_and_throughput(tmp_path: Path)
         "rpm": 30.0,
         "tpm": 720.0,
     }
+
+
+def test_recent_rows_returns_newest_first_with_error_filter_and_paging(tmp_path: Path) -> None:
+    log_path = tmp_path / "stage_monitor.log"
+    rows = []
+    for index in range(25):
+        rows.append(
+            [
+                f"2026-06-10T10:{index:02d}:00Z",
+                f"trace-{index}",
+                "generation",
+                f"query {index}",
+                "",
+                "fail" if index % 2 == 0 else "success",
+                "error" if index % 2 == 0 else "",
+                1.0,
+                2.0,
+            ]
+        )
+    log_path.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+
+    recent = PipelineMonitor(log_path=log_path).recent_rows(limit=20, page=1, errors_only=True)
+
+    assert [row["trace_id"] for row in recent["rows"][:3]] == ["trace-24", "trace-22", "trace-20"]
+    assert recent["paging"]["total_rows"] == 13
+    assert recent["paging"]["start_row"] == 1
+    assert recent["paging"]["end_row"] == 13
+    assert recent["paging"]["pages"] == [{"page": 1, "label": "1-13", "start_row": 1, "end_row": 13}]
+
+
+def test_recent_rows_supports_nested_page_ranges(tmp_path: Path) -> None:
+    log_path = tmp_path / "stage_monitor.log"
+    rows = [
+        [f"2026-06-10T10:{index:02d}:00Z", f"trace-{index}", "retrieval", "", "", "success", "", 1, 1]
+        for index in range(45)
+    ]
+    log_path.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+
+    recent = PipelineMonitor(log_path=log_path).recent_rows(limit=20, page=2)
+
+    assert recent["rows"][0]["trace_id"] == "trace-24"
+    assert recent["paging"]["page"] == 2
+    assert recent["paging"]["start_row"] == 21
+    assert recent["paging"]["end_row"] == 40
+    assert [page["label"] for page in recent["paging"]["pages"]] == ["1-20", "21-40", "41-45"]

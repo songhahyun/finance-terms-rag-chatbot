@@ -221,10 +221,13 @@ class RAGService:
         return self._simple_generator.generate(prompt)
 
     def monitor_summary(self) -> dict[str, Any]:
+        """Return aggregated monitor summaries for legacy and dashboard views."""
         return self._monitor.summary()
 
-    def monitor_recent(self, limit: int = 20) -> dict[str, Any]:
-        return {"items": self._monitor.recent(limit=limit)}
+    def monitor_recent(self, limit: int = 20, page: int = 1, errors_only: bool = False) -> dict[str, Any]:
+        """Return legacy recent traces plus paginated dashboard rows."""
+        rows = self._monitor.recent_rows(limit=limit, page=page, errors_only=errors_only)
+        return {"items": self._monitor.recent(limit=limit), **rows}
 
 
 _SERVICE: RAGService | None = None

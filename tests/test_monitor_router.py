@@ -16,6 +16,8 @@ class StubRagService:
 
     def __init__(self) -> None:
         self.recent_limit: int | None = None
+        self.recent_page: int | None = None
+        self.recent_errors_only: bool | None = None
 
     def monitor_summary(self) -> dict:
         """Return the legacy summary shape exposed by the service."""
@@ -33,10 +35,16 @@ class StubRagService:
             },
         }
 
-    def monitor_recent(self, limit: int = 20) -> dict:
+    def monitor_recent(self, limit: int = 20, page: int = 1, errors_only: bool = False) -> dict:
         """Return the legacy recent shape and capture the requested limit."""
         self.recent_limit = limit
-        return {"items": [{"trace_id": "trace-1", "stages": []}]}
+        self.recent_page = page
+        self.recent_errors_only = errors_only
+        return {
+            "items": [{"trace_id": "trace-1", "stages": []}],
+            "rows": [],
+            "paging": {"limit": limit, "page": page, "errors_only": errors_only},
+        }
 
 
 @pytest.fixture
@@ -87,8 +95,14 @@ def test_monitor_recent_preserves_legacy_contract_and_limit(
 ) -> None:
     _override_user(client, ["admin"])
 
-    response = client.get("/api/monitor/recent?limit=50")
+    response = client.get("/api/monitor/recent?limit=50&page=2&errors_only=true")
 
     assert response.status_code == 200
-    assert response.json() == {"items": [{"trace_id": "trace-1", "stages": []}]}
+    assert response.json() == {
+        "items": [{"trace_id": "trace-1", "stages": []}],
+        "rows": [],
+        "paging": {"limit": 50, "page": 2, "errors_only": True},
+    }
     assert stub_service.recent_limit == 50
+    assert stub_service.recent_page == 2
+    assert stub_service.recent_errors_only is True

@@ -362,6 +362,47 @@ class PipelineMonitor:
             traces = list(self._history)[-max(limit, 1) :]
         return [trace.to_dict() for trace in reversed(traces)]
 
+    def recent_rows(self, *, limit: int = 20, page: int = 1, errors_only: bool = False) -> dict[str, Any]:
+        """Return paginated recent dashboard rows ordered newest first."""
+        page_size = limit if limit in {20, 50, 100} else 20
+        page_index = max(page, 1)
+        with self._lock:
+            rows = list(reversed(self._rows))
+        if errors_only:
+            rows = [row for row in rows if row.get("status") == "fail"]
+
+        total_rows = len(rows)
+        total_pages = max((total_rows + page_size - 1) // page_size, 1)
+        page_index = min(page_index, total_pages)
+        start = (page_index - 1) * page_size
+        end = min(start + page_size, total_rows)
+        return {
+            "rows": rows[start:end],
+            "paging": {
+                "limit": page_size,
+                "page": page_index,
+                "total_rows": total_rows,
+                "total_pages": total_pages,
+                "start_row": start + 1 if total_rows else 0,
+                "end_row": end,
+                "errors_only": errors_only,
+                "pages": self._page_ranges(total_rows, page_size),
+            },
+        }
+
+    @staticmethod
+    def _page_ranges(total_rows: int, page_size: int) -> list[dict[str, int | str]]:
+        """Build page labels as row ranges such as 1-20 and 21-40."""
+        if total_rows <= 0:
+            return []
+        pages = []
+        total_pages = (total_rows + page_size - 1) // page_size
+        for index in range(total_pages):
+            start = index * page_size + 1
+            end = min((index + 1) * page_size, total_rows)
+            pages.append({"page": index + 1, "label": f"{start}-{end}", "start_row": start, "end_row": end})
+        return pages
+
     def summary(self) -> dict[str, Any]:
         """Aggregate stage metrics across stored traces.
         Compute counts, success rates, and average performance values."""
