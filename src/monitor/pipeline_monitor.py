@@ -274,6 +274,60 @@ class PipelineMonitor:
         except (TypeError, ValueError):
             return 0.0
 
+    @staticmethod
+    def _dashboard_stage_name(stage: Any) -> str:
+        """Normalize known pipeline stage names for dashboard grouping."""
+        text = str(stage).strip()
+        for expected in ("intent_classification", "retrieval", "generation"):
+            if text == expected or text.endswith(f"_{expected}"):
+                return expected
+        return text
+
+    @classmethod
+    def _stage_metrics_from_rows(cls, rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+        """Aggregate dashboard stage metrics from normalized monitor rows."""
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in rows:
+            stage = cls._dashboard_stage_name(row.get("stage", ""))
+            if stage:
+                grouped[stage].append(row)
+
+        stage_metrics: dict[str, dict[str, Any]] = {}
+        for stage, stage_rows in grouped.items():
+            total = len(stage_rows)
+            success_count = sum(1 for row in stage_rows if row.get("status") == "success")
+            fail_count = sum(1 for row in stage_rows if row.get("status") == "fail")
+            elapsed_values = [cls._to_float(row.get("elapsed_sec")) for row in stage_rows]
+            throughput_values = [cls._to_float(row.get("throughput")) for row in stage_rows]
+            avg_elapsed_sec = sum(elapsed_values) / total if total else 0.0
+            avg_throughput = sum(throughput_values) / total if total else 0.0
+            throughput = cls._throughput_for_stage(stage, avg_elapsed_sec, avg_throughput)
+            stage_metrics[stage] = {
+                "total_rows": total,
+                "success_count": success_count,
+                "fail_count": fail_count,
+                "avg_elapsed_sec": avg_elapsed_sec,
+                "success_rate": success_count / total if total else 0.0,
+                "throughput": throughput,
+            }
+        return stage_metrics
+
+    @staticmethod
+    def _throughput_for_stage(stage: str, avg_elapsed_sec: float, avg_throughput: float) -> dict[str, float]:
+        """Return stage-specific throughput metrics for dashboard display."""
+        if stage == "intent_classification":
+            return {"rps": avg_throughput}
+        if stage == "retrieval":
+            return {"qps": avg_throughput}
+        if stage == "generation":
+            rpm = 60.0 / avg_elapsed_sec if avg_elapsed_sec > 0 else 0.0
+            return {
+                "output_tps": avg_throughput,
+                "rpm": rpm,
+                "tpm": avg_throughput * 60.0,
+            }
+        return {"throughput": avg_throughput}
+
     def _log_trace_started(self, trace: QueryTrace) -> None:
         """Log the start of a new traced query.
         Record the query text and any attached metadata."""
@@ -340,6 +394,7 @@ class PipelineMonitor:
         return {
             "trace_count": len(traces),
             "stage_summary": summary_by_stage,
+            "dashboard_stage_summary": self._stage_metrics_from_rows(rows),
             "total_rows": len(rows),
             "error_rows": sum(1 for row in rows if row.get("status") == "fail"),
             "warning_rows": 0,
