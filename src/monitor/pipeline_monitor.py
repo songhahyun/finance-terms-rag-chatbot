@@ -285,12 +285,8 @@ class PipelineMonitor:
 
     @staticmethod
     def _dashboard_stage_name(stage: Any) -> str:
-        """Normalize known pipeline stage names for dashboard grouping."""
-        text = str(stage).strip()
-        for expected in ("intent_classification", "retrieval", "generation"):
-            if text == expected or text.endswith(f"_{expected}"):
-                return expected
-        return text
+        """Return the raw monitor stage name for dashboard grouping."""
+        return str(stage).strip()
 
     @classmethod
     def _stage_metrics_from_rows(cls, rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -324,11 +320,11 @@ class PipelineMonitor:
     @staticmethod
     def _throughput_for_stage(stage: str, avg_elapsed_sec: float, avg_throughput: float) -> dict[str, float]:
         """Return stage-specific throughput metrics for dashboard display."""
-        if stage == "intent_classification":
+        if stage == "stage_0_intent_classification" or stage.endswith("_intent_classification"):
             return {"rps": avg_throughput}
-        if stage == "retrieval":
-            return {"qps": avg_throughput}
-        if stage == "generation":
+        if stage.startswith("stage_1_retrieval"):
+            return {"rps": avg_throughput}
+        if stage == "stage_2_generation" or stage.endswith("_generation"):
             rpm = 60.0 / avg_elapsed_sec if avg_elapsed_sec > 0 else 0.0
             return {
                 "output_tps": avg_throughput,

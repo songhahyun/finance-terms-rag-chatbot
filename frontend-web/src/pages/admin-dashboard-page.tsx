@@ -1,22 +1,34 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/app/auth-context";
 import { Button } from "@/components/ui/button";
 import { fetchMonitorRecent, fetchMonitorSummary } from "@/lib/api";
 import type { DashboardStageSummary, MonitorRecentPaging, MonitorRecentRow, MonitorSummaryResponse } from "@/types/api";
 
 const PAGE_SIZES = [20, 50, 100] as const;
-const STAGE_LABELS: Record<string, string> = {
-  intent_classification: "Intent",
-  retrieval: "Retrieval",
-  generation: "Generation",
-};
+const CHART_PAGE_SIZE = 100;
+const THROUGHPUT_CHARTS = [
+  { stage: "stage_0_intent_classification", metric: "rps", label: "RPS", type: "line" },
+  { stage: "stage_1_retrieval_bm25", metric: "rps", label: "RPS", type: "line" },
+  { stage: "stage_1_retrieval_dense", metric: "rps", label: "RPS", type: "line" },
+  { stage: "stage_1_retrieval_fusion", metric: "rps", label: "RPS", type: "line" },
+  { stage: "stage_2_generation", metric: "rpm", label: "RPM", type: "line" },
+  { stage: "stage_2_generation", metric: "tpm", label: "TPM", type: "bar" },
+] as const;
+
+type ThroughputMetric = (typeof THROUGHPUT_CHARTS)[number]["metric"];
+
+interface ChartPoint {
+  time: string;
+  value: number;
+}
 
 export function AdminDashboardPage(): JSX.Element {
   const { token } = useAuth();
   const [summary, setSummary] = useState<MonitorSummaryResponse | null>(null);
   const [rows, setRows] = useState<MonitorRecentRow[]>([]);
+  const [chartRows, setChartRows] = useState<MonitorRecentRow[]>([]);
   const [paging, setPaging] = useState<MonitorRecentPaging | null>(null);
   const [limit, setLimit] = useState<(typeof PAGE_SIZES)[number]>(20);
   const [page, setPage] = useState(1);
@@ -33,8 +45,10 @@ export function AdminDashboardPage(): JSX.Element {
         fetchMonitorSummary(token),
         fetchMonitorRecent(token, limit, page, errorsOnly),
       ]);
+      const chartData = await fetchMonitorChartRows(token);
       setSummary(summaryData);
       setRows(recentData.rows ?? []);
+      setChartRows(chartData);
       setPaging(recentData.paging ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "대시보드 로딩 실패");
@@ -51,16 +65,7 @@ export function AdminDashboardPage(): JSX.Element {
     return Object.entries(summary?.dashboard_stage_summary ?? {}).map(([stage, metrics]) => ({ stage, metrics }));
   }, [summary]);
 
-  const chartData = useMemo(() => {
-    return stageEntries.map(({ stage, metrics }) => ({
-      stage: STAGE_LABELS[stage] ?? stage,
-      rps: metrics.throughput.rps ?? 0,
-      qps: metrics.throughput.qps ?? 0,
-      tps: metrics.throughput.output_tps ?? 0,
-      rpm: metrics.throughput.rpm ?? 0,
-      tpm: metrics.throughput.tpm ?? 0,
-    }));
-  }, [stageEntries]);
+  const throughputSeries = useMemo(() => buildThroughputSeries(chartRows), [chartRows]);
 
   const refreshLabel = summary?.last_refresh ? formatDateTime(summary.last_refresh) : "-";
 
@@ -69,7 +74,6 @@ export function AdminDashboardPage(): JSX.Element {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-[#111827]">대시보드</h1>
-          <p className="text-sm text-[#64748b]">stage_monitor.log</p>
         </div>
         <Button onClick={() => void loadDashboard()} disabled={isLoading} className="gap-2">
           <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
@@ -108,24 +112,20 @@ export function AdminDashboardPage(): JSX.Element {
 
         <section className="rounded-lg border border-[#e6ebf1] bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#334155]">Throughput</h2>
-            <span className="text-xs font-semibold text-[#64748b]">RPS / QPS / TPS / RPM / TPM</span>
+            <h2 className="text-sm font-bold text-[#334155]">Throughput charts</h2>
+            <span className="text-xs font-semibold text-[#64748b]">recent rows, time series</span>
           </div>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 12, right: 16, bottom: 10, left: 0 }}>
-                <CartesianGrid stroke="#e6ebf1" vertical={false} />
-                <XAxis dataKey="stage" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="rps" name="RPS" stackId="throughput" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="qps" name="QPS" stackId="throughput" fill="#14b8a6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="tps" name="TPS" stackId="throughput" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="rpm" name="RPM" stackId="throughput" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="tpm" name="TPM" stackId="throughput" fill="#ef4444" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="grid gap-3 xl:grid-cols-2">
+            {THROUGHPUT_CHARTS.map((chart) => (
+              <ThroughputChart
+                key={`${chart.stage}-${chart.metric}`}
+                stage={chart.stage}
+                metric={chart.metric}
+                label={chart.label}
+                type={chart.type}
+                data={throughputSeries[`${chart.stage}:${chart.metric}`] ?? []}
+              />
+            ))}
           </div>
         </section>
       </div>
@@ -242,7 +242,9 @@ function StageBlock({ stage, metrics }: { stage: string; metrics: DashboardStage
   return (
     <article className="rounded-lg border border-[#e6ebf1] bg-[#fbfdff] p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="truncate text-sm font-extrabold text-[#111827]">{STAGE_LABELS[stage] ?? stage}</h3>
+        <h3 className="truncate text-sm font-extrabold text-[#111827]" title={stage}>
+          {stage}
+        </h3>
         <span className="rounded-md bg-white px-2 py-1 text-xs font-bold text-[#64748b]">{formatPercent(metrics.success_rate)}</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-xs">
@@ -253,6 +255,54 @@ function StageBlock({ stage, metrics }: { stage: string; metrics: DashboardStage
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <Metric label="avg elapsed" value={`${formatNumber(metrics.avg_elapsed_sec, 3)}s`} />
         <Metric label="throughput" value={formatThroughput(metrics.throughput)} />
+      </div>
+    </article>
+  );
+}
+
+function ThroughputChart({
+  stage,
+  metric,
+  label,
+  type,
+  data,
+}: {
+  stage: string;
+  metric: ThroughputMetric;
+  label: string;
+  type: "line" | "bar";
+  data: ChartPoint[];
+}): JSX.Element {
+  return (
+    <article className="min-h-[260px] rounded-lg border border-[#e6ebf1] bg-[#fbfdff] p-3">
+      <div className="mb-2 min-w-0">
+        <h3 className="truncate text-xs font-extrabold text-[#111827]" title={stage}>
+          {stage}
+        </h3>
+        <p className="text-xs font-bold text-[#64748b]">{label}</p>
+      </div>
+      <div className="h-[205px] min-w-[280px]">
+        <ResponsiveContainer width="100%" height="100%">
+          {type === "line" ? (
+            <LineChart data={data} margin={{ top: 10, right: 16, bottom: 8, left: 0 }}>
+              <CartesianGrid stroke="#e6ebf1" vertical={false} />
+              <XAxis dataKey="time" tick={{ fontSize: 11 }} minTickGap={20} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value) => formatNumber(Number(value), 2)} />
+              <Legend />
+              <Line type="monotone" dataKey="value" name={label} stroke="#0ea5e9" strokeWidth={2} dot={false} />
+            </LineChart>
+          ) : (
+            <BarChart data={data} margin={{ top: 10, right: 16, bottom: 8, left: 0 }}>
+              <CartesianGrid stroke="#e6ebf1" vertical={false} />
+              <XAxis dataKey="time" tick={{ fontSize: 11 }} minTickGap={20} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(value) => formatNumber(Number(value), 2)} />
+              <Legend />
+              <Bar dataKey="value" name={label} stackId={metric} fill="#ef4444" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          )}
+        </ResponsiveContainer>
       </div>
     </article>
   );
@@ -288,6 +338,45 @@ function Td({ children, className = "" }: { children: ReactNode; className?: str
   return <td className={`px-3 py-3 align-top text-sm ${className}`}>{children}</td>;
 }
 
+async function fetchMonitorChartRows(token: string): Promise<MonitorRecentRow[]> {
+  const firstPage = await fetchMonitorRecent(token, CHART_PAGE_SIZE, 1, false);
+  const totalPages = firstPage.paging?.total_pages ?? 1;
+  if (totalPages <= 1) {
+    return firstPage.rows ?? [];
+  }
+
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) => fetchMonitorRecent(token, CHART_PAGE_SIZE, index + 2, false)),
+  );
+  return [firstPage, ...rest].flatMap((response) => response.rows ?? []);
+}
+
+function buildThroughputSeries(rows: MonitorRecentRow[]): Record<string, ChartPoint[]> {
+  const series: Record<string, ChartPoint[]> = {};
+  for (const chart of THROUGHPUT_CHARTS) {
+    const points = rows
+      .filter((row) => row.stage === chart.stage)
+      .slice()
+      .sort((a, b) => timestampMs(a.timestamp) - timestampMs(b.timestamp))
+      .map((row) => ({
+        time: formatChartTime(row.timestamp),
+        value: metricValue(row, chart.metric),
+      }));
+    series[`${chart.stage}:${chart.metric}`] = points;
+  }
+  return series;
+}
+
+function metricValue(row: MonitorRecentRow, metric: ThroughputMetric): number {
+  if (metric === "rpm") {
+    return row.elapsed_sec > 0 ? 60 / row.elapsed_sec : 0;
+  }
+  if (metric === "tpm") {
+    return row.throughput * 60;
+  }
+  return row.throughput;
+}
+
 function formatNumber(value: number | undefined, digits = 2): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
   return value.toFixed(digits);
@@ -309,4 +398,15 @@ function formatDateTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function formatChartTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function timestampMs(value: string): number {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
