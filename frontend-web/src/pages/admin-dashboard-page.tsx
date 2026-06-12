@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import * as RadixTooltip from "@radix-ui/react-tooltip";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/app/auth-context";
 import { Button } from "@/components/ui/button";
 import { fetchMonitorRecent, fetchMonitorSummary } from "@/lib/api";
@@ -9,12 +10,12 @@ import type { DashboardStageSummary, MonitorRecentPaging, MonitorRecentRow, Moni
 const PAGE_SIZES = [20, 50, 100] as const;
 const CHART_PAGE_SIZE = 100;
 const THROUGHPUT_CHARTS = [
-  { stage: "stage_0_intent_classification", metric: "rps", label: "RPS", type: "line" },
-  { stage: "stage_1_retrieval_bm25", metric: "rps", label: "RPS", type: "line" },
-  { stage: "stage_1_retrieval_dense", metric: "rps", label: "RPS", type: "line" },
-  { stage: "stage_1_retrieval_fusion", metric: "rps", label: "RPS", type: "line" },
-  { stage: "stage_2_generation", metric: "rpm", label: "RPM", type: "line" },
-  { stage: "stage_2_generation", metric: "tpm", label: "TPM", type: "bar" },
+  { stage: "stage_0_intent_classification", metric: "rps", label: "RPS", type: "line", color: "#0ea5e9" },
+  { stage: "stage_1_retrieval_bm25", metric: "rps", label: "RPS", type: "line", color: "#14b8a6" },
+  { stage: "stage_1_retrieval_dense", metric: "rps", label: "RPS", type: "line", color: "#6366f1" },
+  { stage: "stage_1_retrieval_fusion", metric: "rps", label: "RPS", type: "line", color: "#f59e0b" },
+  { stage: "stage_2_generation", metric: "rpm", label: "RPM", type: "line", color: "#84cc16" },
+  { stage: "stage_2_generation", metric: "tpm", label: "TPM", type: "bar", color: "#ef4444" },
 ] as const;
 
 type ThroughputMetric = (typeof THROUGHPUT_CHARTS)[number]["metric"];
@@ -70,7 +71,8 @@ export function AdminDashboardPage(): JSX.Element {
   const refreshLabel = summary?.last_refresh ? formatDateTime(summary.last_refresh) : "-";
 
   return (
-    <div className="space-y-4">
+    <RadixTooltip.Provider delayDuration={150}>
+      <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold text-[#111827]">대시보드</h1>
@@ -123,6 +125,8 @@ export function AdminDashboardPage(): JSX.Element {
                 metric={chart.metric}
                 label={chart.label}
                 type={chart.type}
+                color={chart.color}
+                description={metricDescription(chart.stage, chart.metric)}
                 data={throughputSeries[`${chart.stage}:${chart.metric}`] ?? []}
               />
             ))}
@@ -223,7 +227,8 @@ export function AdminDashboardPage(): JSX.Element {
           </table>
         </div>
       </section>
-    </div>
+      </div>
+    </RadixTooltip.Provider>
   );
 }
 
@@ -265,12 +270,16 @@ function ThroughputChart({
   metric,
   label,
   type,
+  color,
+  description,
   data,
 }: {
   stage: string;
   metric: ThroughputMetric;
   label: string;
   type: "line" | "bar";
+  color: string;
+  description: string;
   data: ChartPoint[];
 }): JSX.Element {
   return (
@@ -288,18 +297,18 @@ function ThroughputChart({
               <CartesianGrid stroke="#e6ebf1" vertical={false} />
               <XAxis dataKey="time" tick={{ fontSize: 11 }} minTickGap={20} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatNumber(Number(value), 2)} />
-              <Legend />
-              <Line type="monotone" dataKey="value" name={label} stroke="#0ea5e9" strokeWidth={2} dot={false} />
+              <ChartTooltip formatter={(value) => formatNumber(Number(value), 2)} />
+              <Legend content={() => <MetricLegend color={color} label={label} description={description} />} />
+              <Line type="monotone" dataKey="value" name={label} stroke={color} strokeWidth={2} dot={false} />
             </LineChart>
           ) : (
             <BarChart data={data} margin={{ top: 10, right: 16, bottom: 8, left: 0 }}>
               <CartesianGrid stroke="#e6ebf1" vertical={false} />
               <XAxis dataKey="time" tick={{ fontSize: 11 }} minTickGap={20} />
               <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(value) => formatNumber(Number(value), 2)} />
-              <Legend />
-              <Bar dataKey="value" name={label} stackId={metric} fill="#ef4444" radius={[4, 4, 0, 0]} />
+              <ChartTooltip formatter={(value) => formatNumber(Number(value), 2)} />
+              <Legend content={() => <MetricLegend color={color} label={label} description={description} />} />
+              <Bar dataKey="value" name={label} stackId={metric} fill={color} radius={[4, 4, 0, 0]} />
             </BarChart>
           )}
         </ResponsiveContainer>
@@ -314,6 +323,29 @@ function Metric({ label, value, tone = "default" }: { label: string; value: Reac
       <p className="font-bold text-[#64748b]">{label}</p>
       <p className={`mt-1 break-words font-extrabold ${tone === "danger" ? "text-[#dc2626]" : "text-[#111827]"}`}>{value}</p>
     </div>
+  );
+}
+
+function MetricLegend({ color, label, description }: { color: string; label: string; description: string }): JSX.Element {
+  return (
+    <RadixTooltip.Root>
+      <RadixTooltip.Trigger asChild>
+        <button type="button" className="mx-auto mt-1 flex items-center gap-2 rounded-md px-2 py-1 text-xs font-bold text-[#475569] hover:bg-white">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+          {label}
+        </button>
+      </RadixTooltip.Trigger>
+      <RadixTooltip.Portal>
+        <RadixTooltip.Content
+          side="top"
+          align="center"
+          className="z-50 max-w-[320px] rounded-md border border-[#dbe2ea] bg-white px-3 py-2 text-xs font-semibold leading-5 text-[#334155] shadow-lg"
+        >
+          {description}
+          <RadixTooltip.Arrow className="fill-white" />
+        </RadixTooltip.Content>
+      </RadixTooltip.Portal>
+    </RadixTooltip.Root>
   );
 }
 
@@ -375,6 +407,19 @@ function metricValue(row: MonitorRecentRow, metric: ThroughputMetric): number {
     return row.throughput * 60;
   }
   return row.throughput;
+}
+
+function metricDescription(stage: string, metric: ThroughputMetric): string {
+  if (metric === "rpm") {
+    return "RPM: approximate requests per minute for stage_2_generation, calculated as 60 / elapsed_sec.";
+  }
+  if (metric === "tpm") {
+    return "TPM: approximate value for stage_2_generation, currently calculated as chars/sec * 60. A token_count() helper is planned for real token-based TPM.";
+  }
+  if (stage.startsWith("stage_1_retrieval")) {
+    return "RPS: retrieval requests per second. Uses the new calls/sec monitor throughput value from stage_1_retrieval_* logs.";
+  }
+  return "RPS: requests per second for intent classification. Uses the monitor throughput value from stage_0_intent_classification.";
 }
 
 function formatNumber(value: number | undefined, digits = 2): string {
