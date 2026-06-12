@@ -42,6 +42,7 @@ class QueryTrace:
         *,
         throughput_unit: str = "units/sec",
         throughput_fn: Callable[[Any], float] | None = None,
+        success_fn: Callable[[Any], bool] | None = None,
         timeout_sec: float | None = None,
     ) -> Any:
         """Execute one pipeline stage while collecting timing metadata.
@@ -68,6 +69,14 @@ class QueryTrace:
                 except Exception:  # noqa: BLE001
                     units = 0.0
             throughput = units / elapsed
+            if success and success_fn is not None:
+                try:
+                    success = bool(success_fn(result))
+                except Exception as exc:  # noqa: BLE001
+                    success = False
+                    error = f"{type(exc).__name__}: {exc}"
+                if not success and error is None:
+                    error = "StageMarkedFailed: success_fn returned false"
             if success and timeout_sec is not None and elapsed > timeout_sec:
                 success = False
                 error = f"TimeoutExceeded: elapsed_sec={elapsed:.3f} > timeout_sec={timeout_sec:.3f}"

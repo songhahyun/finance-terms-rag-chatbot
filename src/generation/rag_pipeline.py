@@ -144,28 +144,32 @@ class RAGPipeline:
             bm25_docs = trace.run_stage(
                 "stage_1_retrieval_bm25",
                 lambda: self.retriever.retrieve_bm25(query),
-                throughput_unit="docs/sec",
-                throughput_fn=lambda out: len(out),
+                throughput_unit="calls/sec",
+                throughput_fn=lambda out: 1,
+                success_fn=lambda out: len(out) > 0,
             )
             dense_docs = trace.run_stage(
-                "stage1_1_retrieval_dense",
+                "stage_1_retrieval_dense",
                 lambda: self.retriever.retrieve_dense(query),
-                throughput_unit="docs/sec",
-                throughput_fn=lambda out: len(out),
+                throughput_unit="calls/sec",
+                throughput_fn=lambda out: 1,
+                success_fn=lambda out: len(out) > 0,
             )
             return trace.run_stage(
                 "stage_1_retrieval_fusion",
                 lambda: self.retriever.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs),
-                throughput_unit="docs/sec",
-                throughput_fn=lambda out: len(out),
+                throughput_unit="calls/sec",
+                throughput_fn=lambda out: 1,
+                success_fn=lambda out: len(dense_docs) > 0 or len(bm25_docs) > 0,
             )
 
         if trace is not None:
             return trace.run_stage(
                 "stage_1_retrieval_fusion",
                 lambda: self.retriever.invoke(query),
-                throughput_unit="docs/sec",
-                throughput_fn=lambda out: len(out),
+                throughput_unit="calls/sec",
+                throughput_fn=lambda out: 1,
+                success_fn=lambda out: len(out) > 0,
             )
         return self.retriever.invoke(query)
 
