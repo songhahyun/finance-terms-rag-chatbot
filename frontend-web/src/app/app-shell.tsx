@@ -39,7 +39,7 @@ export function AppShell(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] p-3 md:p-5">
-      <div className="mx-auto min-h-[calc(100vh-1.5rem)] max-w-[1400px] overflow-hidden rounded-2xl border border-[#dbe2ea] bg-white">
+      <div className="mx-auto min-h-[calc(100vh-1.5rem)] w-full max-w-[1800px] overflow-hidden rounded-2xl border border-[#dbe2ea] bg-white">
         <header className="flex h-14 items-center justify-between border-b border-[#e6ebf1] px-5">
           <Link to="/chat" className="flex items-center gap-2 text-[28px] font-extrabold tracking-tight text-[#1e5eff]">
             <Bot className="h-5 w-5" />
@@ -119,7 +119,7 @@ export function AppShell(): JSX.Element {
             </div>
           </aside>
 
-          <main className="bg-white p-4 md:p-5">
+          <main className="min-w-0 overflow-x-auto bg-white p-4 md:p-5">
             <Outlet />
           </main>
         </div>
