@@ -1,0 +1,3 @@
+﻿experiment,rows,answer_relevancy,faithfulness,context_precision,context_recall,detail_output_path
+hybrid_clova_bge-m3_gemma,100,0.6931399680318178,0.8927718670218671,0.9449444444177424,0.961476187459883,/content/finance-terms-rag-chatbot/data/eval/outputs/ragas_003_change_base_model/hybrid_clova_bge-m3_gemma_ragas.csv
+hybrid_clova_bge-m3_llama,100,0.7946120249092868,0.8931045270948522,0.9401249999740319,0.9657598131908771,/content/finance-terms-rag-chatbot/data/eval/outputs/ragas_003_change_base_model/hybrid_clova_bge-m3_llama_ragas.csv
