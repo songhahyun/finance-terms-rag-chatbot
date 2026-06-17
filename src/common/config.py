@@ -92,7 +92,7 @@ def get_settings() -> Settings:
         chroma_host=os.getenv("CHROMA_HOST", "chroma"),
         chroma_port=int(os.getenv("CHROMA_PORT", "8000")),
         chroma_ssl=os.getenv("CHROMA_SSL", "false").lower() in {"1", "true", "yes", "on"},
-        chroma_collection_name=os.getenv("CHROMA_COLLECTION_NAME", "finance_clova"),
+        chroma_collection_name=os.getenv("CHROMA_COLLECTION_NAME", "docs_clova"),
         monitor_stage_log_path=Path(
             os.getenv("MONITOR_STAGE_LOG_PATH", str(root / "logs" / "stage_monitor.log"))
         ),
