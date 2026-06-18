@@ -19,6 +19,13 @@ const THROUGHPUT_CHARTS = [
 ] as const;
 
 type ThroughputMetric = (typeof THROUGHPUT_CHARTS)[number]["metric"];
+type DashboardTab = "stage-summary" | "throughput-charts" | "recent-logs";
+
+const DASHBOARD_TABS: Array<{ id: DashboardTab; label: string }> = [
+  { id: "stage-summary", label: "Stage summary" },
+  { id: "throughput-charts", label: "Throughput charts" },
+  { id: "recent-logs", label: "Recent logs" },
+];
 
 interface ChartPoint {
   time: string;
@@ -34,6 +41,7 @@ export function AdminDashboardPage(): JSX.Element {
   const [limit, setLimit] = useState<(typeof PAGE_SIZES)[number]>(20);
   const [page, setPage] = useState(1);
   const [errorsOnly, setErrorsOnly] = useState(false);
+  const [activeTab, setActiveTab] = useState<DashboardTab>("stage-summary");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,163 +81,207 @@ export function AdminDashboardPage(): JSX.Element {
   return (
     <RadixTooltip.Provider delayDuration={150}>
       <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold text-[#111827]">대시보드</h1>
-        </div>
-        <Button onClick={() => void loadDashboard()} disabled={isLoading} className="gap-2">
-          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-          새로고침
-        </Button>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#b91c1c]">
-          <AlertCircle className="h-4 w-4" />
-          {error}
-        </div>
-      )}
-
-      <div className="grid gap-3 md:grid-cols-4">
-        <SummaryCard label="Total rows" value={summary?.total_rows ?? 0} />
-        <SummaryCard label="Error rows" value={summary?.error_rows ?? 0} tone="danger" />
-        <SummaryCard label="Warning rows" value={summary?.warning_rows ?? 0} />
-        <SummaryCard label="Last refresh" value={refreshLabel} />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
-        <section className="rounded-lg border border-[#e6ebf1] bg-white p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#334155]">Stage summary</h2>
-            <span className="text-xs font-semibold text-[#64748b]">{stageEntries.length} stages</span>
-          </div>
-          <div className="space-y-4">
-            {stageEntries.length > 0 ? (
-              <>
-                <CallBasedStageTable entries={stageEntries.filter(({ metrics }) => metrics.stage_type === "call_based")} />
-                <GenerationStageTable entries={stageEntries.filter(({ metrics }) => metrics.stage_type === "generation")} />
-              </>
-            ) : (
-              <EmptyState>스테이지 데이터가 없습니다.</EmptyState>
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-[#e6ebf1] bg-white p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-bold text-[#334155]">Throughput charts</h2>
-            <span className="text-xs font-semibold text-[#64748b]">recent rows, time series</span>
-          </div>
-          <div className="grid gap-3 xl:grid-cols-2">
-            {THROUGHPUT_CHARTS.map((chart) => (
-              <ThroughputChart
-                key={`${chart.stage}-${chart.metric}`}
-                stage={chart.stage}
-                metric={chart.metric}
-                label={chart.label}
-                type={chart.type}
-                color={chart.color}
-                description={metricDescription(chart.stage, chart.metric)}
-                data={throughputSeries[`${chart.stage}:${chart.metric}`] ?? []}
-              />
-            ))}
-          </div>
-        </section>
-      </div>
-
-      <section className="rounded-lg border border-[#e6ebf1] bg-white p-4">
-        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-sm font-bold text-[#334155]">Recent logs</h2>
-            <p className="text-xs font-semibold text-[#64748b]">
-              {paging ? `${paging.start_row}-${paging.end_row} / ${paging.total_rows}` : "0-0 / 0"}
-            </p>
+            <h1 className="text-2xl font-extrabold text-[#111827]">대시보드</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex h-10 items-center gap-2 rounded-md border border-[#dce4ee] bg-white px-3 text-sm font-semibold text-[#334155]">
-              <input
-                type="checkbox"
-                checked={errorsOnly}
-                onChange={(event) => {
-                  setErrorsOnly(event.target.checked);
-                  setPage(1);
-                }}
-                className="h-4 w-4"
-              />
-              Errors only
-            </label>
-            <select
-              value={limit}
-              onChange={(event) => {
-                setLimit(Number(event.target.value) as (typeof PAGE_SIZES)[number]);
-                setPage(1);
-              }}
-              className="h-10 rounded-md border border-[#dce4ee] bg-white px-3 text-sm font-semibold text-[#334155]"
-            >
-              {PAGE_SIZES.map((size) => (
-                <option key={size} value={size}>
-                  {size} rows
-                </option>
-              ))}
-            </select>
-          </div>
+          <Button onClick={() => void loadDashboard()} disabled={isLoading} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            새로고침
+          </Button>
         </div>
 
-        <div className="mb-3 flex flex-wrap gap-2">
-          {(paging?.pages ?? []).map((pageRange) => (
-            <button
-              key={pageRange.page}
-              onClick={() => setPage(pageRange.page)}
-              className={`h-8 rounded-md border px-3 text-xs font-bold ${
-                pageRange.page === page
-                  ? "border-[#0ea5e9] bg-[#e0f2fe] text-[#0369a1]"
-                  : "border-[#dce4ee] bg-white text-[#475569] hover:bg-[#f8fafc]"
-              }`}
-            >
-              {pageRange.label}
-            </button>
-          ))}
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-semibold text-[#b91c1c]">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        <div className="grid gap-3 md:grid-cols-4">
+          <SummaryCard label="Total rows" value={summary?.total_rows ?? 0} />
+          <SummaryCard label="Error rows" value={summary?.error_rows ?? 0} tone="danger" />
+          <SummaryCard label="Warning rows" value={summary?.warning_rows ?? 0} />
+          <SummaryCard label="Last refresh" value={refreshLabel} />
         </div>
 
-        <div className="overflow-auto rounded-lg border border-[#e6ebf1]">
-          <table className="w-full min-w-[1100px] border-collapse text-sm">
-            <thead className="bg-[#f8faff] text-[#607188]">
-              <tr>
-                <Th>timestamp</Th>
-                <Th>trace_id</Th>
-                <Th>stage</Th>
-                <Th>status</Th>
-                <Th>elapsed_sec</Th>
-                <Th>user_query</Th>
-                <Th>error_message</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length > 0 ? (
-                rows.map((row) => (
-                  <tr key={`${row.trace_id}-${row.timestamp}-${row.stage}`} className="border-t border-[#edf2f7] text-[#334155]">
-                    <Td>{formatDateTime(row.timestamp)}</Td>
-                    <Td className="max-w-[220px] truncate font-mono text-xs">{row.trace_id}</Td>
-                    <Td>{row.stage}</Td>
-                    <Td>
-                      <StatusBadge status={row.status} />
-                    </Td>
-                    <Td>{formatNumber(row.elapsed_sec, 3)}</Td>
-                    <Td className="max-w-[360px] truncate">{row.user_query || "-"}</Td>
-                    <Td className="max-w-[320px] truncate text-[#b91c1c]">{row.error_message || "-"}</Td>
-                  </tr>
-                ))
+        <section className="rounded-lg border border-[#e6ebf1] bg-white">
+          <div className="border-b border-[#e6ebf1] px-4 pt-4">
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Dashboard sections">
+              {DASHBOARD_TABS.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`${tab.id}-panel`}
+                    id={`${tab.id}-tab`}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+                      isActive
+                        ? "border-[#dce4ee] bg-white text-[#0f172a]"
+                        : "border-transparent bg-[#f8fafc] text-[#64748b] hover:bg-[#eef4fb] hover:text-[#334155]"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div
+            role="tabpanel"
+            id="stage-summary-panel"
+            aria-labelledby="stage-summary-tab"
+            hidden={activeTab !== "stage-summary"}
+            className="p-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-[#334155]">Stage summary</h2>
+              <span className="text-xs font-semibold text-[#64748b]">{stageEntries.length} stages</span>
+            </div>
+            <div className="space-y-4">
+              {stageEntries.length > 0 ? (
+                <>
+                  <CallBasedStageTable entries={stageEntries.filter(({ metrics }) => metrics.stage_type === "call_based")} />
+                  <GenerationStageTable entries={stageEntries.filter(({ metrics }) => metrics.stage_type === "generation")} />
+                </>
               ) : (
-                <tr>
-                  <td colSpan={7} className="px-3 py-10 text-center text-sm font-semibold text-[#64748b]">
-                    로그 데이터가 없습니다.
-                  </td>
-                </tr>
+                <EmptyState>스테이지 데이터가 없습니다.</EmptyState>
               )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+            </div>
+          </div>
+
+          <div
+            role="tabpanel"
+            id="throughput-charts-panel"
+            aria-labelledby="throughput-charts-tab"
+            hidden={activeTab !== "throughput-charts"}
+            className="p-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-[#334155]">Throughput charts</h2>
+              <span className="text-xs font-semibold text-[#64748b]">recent rows, time series</span>
+            </div>
+            <div className="grid gap-3 xl:grid-cols-2">
+              {THROUGHPUT_CHARTS.map((chart) => (
+                <ThroughputChart
+                  key={`${chart.stage}-${chart.metric}`}
+                  stage={chart.stage}
+                  metric={chart.metric}
+                  label={chart.label}
+                  type={chart.type}
+                  color={chart.color}
+                  description={metricDescription(chart.stage, chart.metric)}
+                  data={throughputSeries[`${chart.stage}:${chart.metric}`] ?? []}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div
+            role="tabpanel"
+            id="recent-logs-panel"
+            aria-labelledby="recent-logs-tab"
+            hidden={activeTab !== "recent-logs"}
+            className="p-4"
+          >
+            <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-[#334155]">Recent logs</h2>
+                <p className="text-xs font-semibold text-[#64748b]">
+                  {paging ? `${paging.start_row}-${paging.end_row} / ${paging.total_rows}` : "0-0 / 0"}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex h-10 items-center gap-2 rounded-md border border-[#dce4ee] bg-white px-3 text-sm font-semibold text-[#334155]">
+                  <input
+                    type="checkbox"
+                    checked={errorsOnly}
+                    onChange={(event) => {
+                      setErrorsOnly(event.target.checked);
+                      setPage(1);
+                    }}
+                    className="h-4 w-4"
+                  />
+                  Errors only
+                </label>
+                <select
+                  value={limit}
+                  onChange={(event) => {
+                    setLimit(Number(event.target.value) as (typeof PAGE_SIZES)[number]);
+                    setPage(1);
+                  }}
+                  className="h-10 rounded-md border border-[#dce4ee] bg-white px-3 text-sm font-semibold text-[#334155]"
+                >
+                  {PAGE_SIZES.map((size) => (
+                    <option key={size} value={size}>
+                      {size} rows
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mb-3 flex flex-wrap gap-2">
+              {(paging?.pages ?? []).map((pageRange) => (
+                <button
+                  key={pageRange.page}
+                  onClick={() => setPage(pageRange.page)}
+                  className={`h-8 rounded-md border px-3 text-xs font-bold ${
+                    pageRange.page === page
+                      ? "border-[#0ea5e9] bg-[#e0f2fe] text-[#0369a1]"
+                      : "border-[#dce4ee] bg-white text-[#475569] hover:bg-[#f8fafc]"
+                  }`}
+                >
+                  {pageRange.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="overflow-auto rounded-lg border border-[#e6ebf1]">
+              <table className="w-full min-w-[1100px] border-collapse text-sm">
+                <thead className="bg-[#f8faff] text-[#607188]">
+                  <tr>
+                    <Th>timestamp</Th>
+                    <Th>trace_id</Th>
+                    <Th>stage</Th>
+                    <Th>status</Th>
+                    <Th>elapsed_sec</Th>
+                    <Th>user_query</Th>
+                    <Th>error_message</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length > 0 ? (
+                    rows.map((row) => (
+                      <tr key={`${row.trace_id}-${row.timestamp}-${row.stage}`} className="border-t border-[#edf2f7] text-[#334155]">
+                        <Td>{formatDateTime(row.timestamp)}</Td>
+                        <Td className="max-w-[220px] truncate font-mono text-xs">{row.trace_id}</Td>
+                        <Td>{row.stage}</Td>
+                        <Td>
+                          <StatusBadge status={row.status} />
+                        </Td>
+                        <Td>{formatNumber(row.elapsed_sec, 3)}</Td>
+                        <Td className="max-w-[360px] truncate">{row.user_query || "-"}</Td>
+                        <Td className="max-w-[320px] truncate text-[#b91c1c]">{row.error_message || "-"}</Td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-10 text-center text-sm font-semibold text-[#64748b]">
+                        로그 데이터가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
     </RadixTooltip.Provider>
   );
