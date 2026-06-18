@@ -2,16 +2,38 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import src.query_intent as intent_package
 from src.generation.query_intent import (
+    CAPABILITY_ANSWER,
     ClassifierMethod,
+    DEFAULT_CLARIFICATION_ANSWER,
     FinanceTermDictionary,
+    GREETING_ANSWER,
+    NEEDS_WEB_FALLBACK_ANSWER,
     OpenAILLMIntentClassifier,
     QueryIntentClassifier,
     QueryIntent,
     QueryIntentResult,
     RuleBasedQueryClassifier,
+    UNSUPPORTED_DOMAIN_ANSWER,
     normalize_term,
 )
+
+
+def test_query_intent_facade_exports_same_objects_as_intent_package() -> None:
+    assert CAPABILITY_ANSWER is intent_package.CAPABILITY_ANSWER
+    assert ClassifierMethod is intent_package.ClassifierMethod
+    assert DEFAULT_CLARIFICATION_ANSWER is intent_package.DEFAULT_CLARIFICATION_ANSWER
+    assert FinanceTermDictionary is intent_package.FinanceTermDictionary
+    assert GREETING_ANSWER is intent_package.GREETING_ANSWER
+    assert NEEDS_WEB_FALLBACK_ANSWER is intent_package.NEEDS_WEB_FALLBACK_ANSWER
+    assert OpenAILLMIntentClassifier is intent_package.OpenAILLMIntentClassifier
+    assert QueryIntent is intent_package.QueryIntent
+    assert QueryIntentClassifier is intent_package.QueryIntentClassifier
+    assert QueryIntentResult is intent_package.QueryIntentResult
+    assert RuleBasedQueryClassifier is intent_package.RuleBasedQueryClassifier
+    assert UNSUPPORTED_DOMAIN_ANSWER is intent_package.UNSUPPORTED_DOMAIN_ANSWER
+    assert normalize_term is intent_package.normalize_term
 
 
 def test_query_intent_result_metadata() -> None:
@@ -110,6 +132,54 @@ def test_rule_classifier_routes_unsupported_domain_to_simple_fixed_answer(tmp_pa
     assert result.intent == QueryIntent.SIMPLE
     assert result.reason == "unsupported_domain_fixed_answer"
     assert result.fixed_answer is not None
+
+
+def test_rule_classifier_filters_longest_finance_term_matches(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text(
+        "\n".join(
+            [
+                "레이션\tNNG",
+                "스태\tNNG",
+                "스태그플레이션\tNNG",
+                "인플\tNNG",
+                "인플레\tNNG",
+                "인플레이션\tNNG",
+                "차이\tNNG",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("인플레이션과 스태그플레이션의 차이점은 무엇인가요?")
+
+    assert result.intent == QueryIntent.NEEDS_RAG
+    assert set(result.matched_terms) == {"스태그플레이션", "인플레이션"}
+
+
+def test_rule_classifier_programming_query_has_no_finance_false_positive(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("리스\tNNG\n리스트\tNNG\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("파이썬 리스트 컴프리헨션 알려줘")
+
+    assert result.intent == QueryIntent.SIMPLE
+    assert result.reason == "unsupported_domain_fixed_answer"
+    assert result.matched_terms == []
+
+
+def test_rule_classifier_conceptual_market_word_query_uses_rag(tmp_path: Path) -> None:
+    path = tmp_path / "kiwi_user_dict.tsv"
+    path.write_text("금리\tNNG\n주가\tNNG\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("금리와 주가의 관계는?")
+
+    assert result.intent == QueryIntent.NEEDS_RAG
+    assert set(result.matched_terms) == {"금리", "주가"}
 
 
 class _FakeMessage:

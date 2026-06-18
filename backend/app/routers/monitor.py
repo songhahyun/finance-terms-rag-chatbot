@@ -17,7 +17,12 @@ def monitor_summary(user: AuthenticatedUser = Depends(require_roles("admin"))) -
 
 
 @router.get("/recent")
-def monitor_recent(limit: int = 20, user: AuthenticatedUser = Depends(require_roles("admin"))) -> dict:
+def monitor_recent(
+    limit: int = 20,
+    page: int = 1,
+    errors_only: bool = False,
+    user: AuthenticatedUser = Depends(require_roles("admin")),
+) -> dict:
     """Return recent monitoring trace records.
     Limit the response size to the requested item count."""
-    return get_rag_service().monitor_recent(limit=limit)
+    return get_rag_service().monitor_recent(limit=limit, page=page, errors_only=errors_only)

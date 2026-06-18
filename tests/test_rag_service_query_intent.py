@@ -19,8 +19,8 @@ class _FakeClassifier:
 
 
 class _FakeDoc:
-    page_content = "문서 내용"
-    metadata = {"chunk_id": "chunk-1", "source": "source.pdf"}
+    page_content = "가산금리\n\n문서 내용"
+    metadata = {"chunk_id": "chunk-1", "source": "source.pdf", "term": "가산금리", "related_terms": "금리, 대출금리"}
 
 
 class _FakePipeline:
@@ -93,6 +93,9 @@ def test_service_rag_route_uses_existing_pipeline() -> None:
     assert result["answer"] == "RAG 답변"
     assert result["retrieved_ids"] == ["chunk-1"]
     assert result["sources"][0]["chunk_id"] == "chunk-1"
+    assert result["sources"][0]["term"] == "가산금리"
+    assert result["sources"][0]["explanation"] == "문서 내용"
+    assert result["sources"][0]["related_terms"] == ["금리", "대출금리"]
     assert result["intent"] == "needs_rag"
     assert result["matched_terms"] == ["가산금리"]
     assert result["monitoring"]["metadata"]["intent"] == "needs_rag"

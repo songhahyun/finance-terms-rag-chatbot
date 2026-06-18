@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Bot, FileText, LayoutDashboard, LogOut, MessageSquare, Plus, Settings } from "lucide-react";
+import { Bot, FileText, LayoutDashboard, LogOut, MessageSquare, PanelLeftClose, PanelLeftOpen, Plus, Settings } from "lucide-react";
 import { useAuth } from "@/app/auth-context";
 import { Button } from "@/components/ui/button";
 import { CONVERSATIONS_CHANGED_EVENT, loadConversations, type Conversation } from "@/lib/conversations";
@@ -11,7 +11,9 @@ export function AppShell(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = Boolean(user?.roles.includes("admin"));
-  const [recentConversations, setRecentConversations] = useState<Conversation[]>(() => loadConversations());
+  const storageUsername = user?.username;
+  const [recentConversations, setRecentConversations] = useState<Conversation[]>(() => loadConversations(storageUsername));
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -24,7 +26,7 @@ export function AppShell(): JSX.Element {
 
   useEffect(() => {
     const syncConversations = () => {
-      setRecentConversations(loadConversations());
+      setRecentConversations(loadConversations(storageUsername));
     };
 
     window.addEventListener("storage", syncConversations);
@@ -33,11 +35,11 @@ export function AppShell(): JSX.Element {
       window.removeEventListener("storage", syncConversations);
       window.removeEventListener(CONVERSATIONS_CHANGED_EVENT, syncConversations);
     };
-  }, []);
+  }, [storageUsername]);
 
   return (
     <div className="min-h-screen bg-[#f5f7fb] p-3 md:p-5">
-      <div className="mx-auto min-h-[calc(100vh-1.5rem)] max-w-[1400px] overflow-hidden rounded-2xl border border-[#dbe2ea] bg-white">
+      <div className="mx-auto min-h-[calc(100vh-1.5rem)] w-full max-w-[1800px] overflow-hidden rounded-2xl border border-[#dbe2ea] bg-white">
         <header className="flex h-14 items-center justify-between border-b border-[#e6ebf1] px-5">
           <Link to="/chat" className="flex items-center gap-2 text-[28px] font-extrabold tracking-tight text-[#1e5eff]">
             <Bot className="h-5 w-5" />
@@ -52,11 +54,23 @@ export function AppShell(): JSX.Element {
           </div>
         </header>
 
-        <div className="grid min-h-[calc(100vh-5.5rem)] grid-cols-1 md:grid-cols-[220px_1fr]">
+        <div className={cn("grid min-h-[calc(100vh-5.5rem)] grid-cols-1", isSidebarExpanded ? "md:grid-cols-[340px_1fr]" : "md:grid-cols-[220px_1fr]")}>
           <aside className="border-r border-[#e6ebf1] bg-[#fbfcff] p-4">
-            <Button className="mb-4 h-11 w-full bg-[#2162ff] text-white hover:bg-[#1e56e8]" onClick={startNewConversation}>
-              <Plus className="mr-2 h-4 w-4" /> 새 대화
-            </Button>
+            <div className="mb-4 flex items-center gap-2">
+              <Button className="h-11 flex-1 bg-[#2162ff] text-white hover:bg-[#1e56e8]" onClick={startNewConversation}>
+                <Plus className="mr-2 h-4 w-4" /> 새 대화
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden h-11 w-11 p-0 md:inline-flex"
+                aria-label={isSidebarExpanded ? "사이드바 접기" : "사이드바 펼치기"}
+                title={isSidebarExpanded ? "사이드바 접기" : "사이드바 펼치기"}
+                onClick={() => setIsSidebarExpanded((current) => !current)}
+              >
+                {isSidebarExpanded ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+              </Button>
+            </div>
 
             <nav className="space-y-1">
               <NavItem to="/chat" label="대화" icon={<MessageSquare className="h-4 w-4" />} isActive={location.pathname.startsWith("/chat")} />
@@ -86,11 +100,13 @@ export function AppShell(): JSX.Element {
                       key={conversation.id}
                       type="button"
                       className={cn(
-                        "w-full truncate rounded-md px-2 py-2 text-left text-sm text-[#4f5f78] hover:bg-[#eef3ff]",
+                        "w-full rounded-md px-2 py-2 text-left text-sm text-[#4f5f78] hover:bg-[#eef3ff]",
+                        isSidebarExpanded ? "whitespace-normal break-keep leading-5" : "truncate",
                         location.pathname.startsWith("/chat") &&
                           new URLSearchParams(location.search).get("conversationId") === conversation.id &&
                           "bg-[#eef3ff] text-[#1e5eff]",
                       )}
+                      title={conversation.title}
                       onClick={() => navigate(`/chat?conversationId=${encodeURIComponent(conversation.id)}`)}
                     >
                       {conversation.title}
@@ -103,7 +119,7 @@ export function AppShell(): JSX.Element {
             </div>
           </aside>
 
-          <main className="bg-white p-4 md:p-5">
+          <main className="min-w-0 overflow-x-auto bg-white p-4 md:p-5">
             <Outlet />
           </main>
         </div>

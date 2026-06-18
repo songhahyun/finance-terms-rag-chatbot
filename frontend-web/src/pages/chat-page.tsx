@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, FileText, SendHorizontal, UserCircle2 } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, FileText, SendHorizontal, UserCircle2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/app/auth-context";
 import {
@@ -11,17 +11,45 @@ import {
   type Conversation,
 } from "@/lib/conversations";
 import { postChat } from "@/lib/api";
+import { loadChatRetrievalPayload } from "@/lib/retrieval-settings";
 import { Button } from "@/components/ui/button";
+import type { SourceItem } from "@/types/api";
+
+function sourceTermLabel(source: SourceItem): string {
+  return source.term?.trim() || source.chunk_id || "알 수 없음";
+}
+
+function sourceExplanation(source: SourceItem): string {
+  return source.explanation?.trim() || source.text;
+}
+
+function sourceRelatedTerms(source: SourceItem): string {
+  const terms = source.related_terms?.filter((term) => term.trim() && term.trim() !== "없음") ?? [];
+  return terms.length > 0 ? terms.join(", ") : "없음";
+}
+
+function TypingDots(): JSX.Element {
+  return (
+    <span className="chat-typing-dots" aria-label="답변 생성 중" role="status">
+      <span className="chat-typing-dot" />
+      <span className="chat-typing-dot" />
+      <span className="chat-typing-dot" />
+    </span>
+  );
+}
 
 export function ChatPage(): JSX.Element {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedConversationId = searchParams.get("conversationId");
+  const storageUsername = user?.username;
   const [question, setQuestion] = useState("");
-  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations());
+  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations(storageUsername));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSourceMessages, setExpandedSourceMessages] = useState<Set<string>>(() => new Set());
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
 
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
@@ -29,61 +57,90 @@ export function ChatPage(): JSX.Element {
   );
 
   useEffect(() => {
-    setConversations(loadConversations());
-  }, [selectedConversationId]);
+    setConversations(loadConversations(storageUsername));
+  }, [selectedConversationId, storageUsername]);
 
   const ask = async () => {
     if (!token || !question.trim()) return;
     const asked = question.trim();
+    const now = new Date().toISOString();
+    const conversationId = selectedConversation?.id ?? createConversationId();
+    const userMessage: ChatMessage = {
+      id: createConversationId(),
+      role: "user",
+      content: asked,
+      createdAt: now,
+    };
+    const conversationWithUser: Conversation = selectedConversation
+      ? {
+          ...selectedConversation,
+          messages: [...selectedConversation.messages, userMessage],
+          updatedAt: now,
+        }
+      : {
+          id: conversationId,
+          title: createConversationTitle(asked),
+          messages: [userMessage],
+          createdAt: now,
+          updatedAt: now,
+        };
+    const conversationsWithUser = saveConversations(
+      [conversationWithUser, ...conversations.filter((conversation) => conversation.id !== conversationId)],
+      storageUsername,
+    );
+    setConversations(conversationsWithUser);
+    if (!selectedConversation) {
+      navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`, { replace: true });
+    }
+    setQuestion("");
     setIsLoading(true);
+    setPendingConversationId(conversationId);
     setError(null);
     try {
-      const response = await postChat({ question: asked, mode: "hybrid", k: 5, language: "ko" }, token);
-      const now = new Date().toISOString();
-      const conversationId = selectedConversation?.id ?? createConversationId();
-      const userMessage: ChatMessage = {
-        id: createConversationId(),
-        role: "user",
-        content: asked,
-        createdAt: now,
-      };
+      const retrievalSettings = loadChatRetrievalPayload();
+      const response = await postChat({ question: asked, ...retrievalSettings, language: "ko" }, token);
+      const answeredAt = new Date().toISOString();
       const assistantMessage: ChatMessage = {
         id: createConversationId(),
         role: "assistant",
         content: response.answer,
-        createdAt: now,
+        createdAt: answeredAt,
         sources: response.sources,
+        intent: response.intent,
       };
-      const nextConversation: Conversation = selectedConversation
-        ? {
-            ...selectedConversation,
-            messages: [...selectedConversation.messages, userMessage, assistantMessage],
-            updatedAt: now,
-          }
-        : {
-            id: conversationId,
-            title: createConversationTitle(asked),
-            messages: [userMessage, assistantMessage],
-            createdAt: now,
-            updatedAt: now,
-          };
-      const nextConversations = saveConversations([
-        nextConversation,
-        ...conversations.filter((conversation) => conversation.id !== conversationId),
-      ]);
+      const latestConversations = loadConversations(storageUsername);
+      const latestConversation = latestConversations.find((conversation) => conversation.id === conversationId) ?? conversationWithUser;
+      const nextConversation: Conversation = {
+        ...latestConversation,
+        messages: [...latestConversation.messages, assistantMessage],
+        updatedAt: answeredAt,
+      };
+      const nextConversations = saveConversations(
+        [nextConversation, ...latestConversations.filter((conversation) => conversation.id !== conversationId)],
+        storageUsername,
+      );
       setConversations(nextConversations);
-      if (!selectedConversation) {
-        navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`, { replace: true });
-      }
-      setQuestion("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "답변 생성에 실패했습니다.");
     } finally {
       setIsLoading(false);
+      setPendingConversationId(null);
     }
   };
 
   const messages = selectedConversation?.messages ?? [];
+  const showPendingBubble = isLoading && pendingConversationId === selectedConversation?.id;
+  const toggleSources = (messageId: string) => {
+    setExpandedSourceMessages((current) => {
+      const next = new Set(current);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="flex h-full min-h-[72vh] flex-col rounded-xl border border-[#e6ebf1] bg-white">
@@ -109,17 +166,34 @@ export function ChatPage(): JSX.Element {
                 </div>
                 <div className="w-full rounded-xl border border-[#dfe5ed] bg-white">
                   <div className="whitespace-pre-wrap border-b border-[#ecf0f5] px-4 py-4 text-[15px] leading-7 text-[#334155]">{message.content}</div>
-                  {message.sources && (
+                  {message.intent === "needs_rag" && message.sources && message.sources.length > 0 && (
                     <div className="px-4 py-3">
-                      <p className="mb-2 text-sm font-bold text-[#4f5f78]">참고 문서 ({message.sources.length})</p>
-                      <div className="space-y-1">
-                        {message.sources.slice(0, 3).map((source, idx) => (
-                          <div key={`${source.chunk_id ?? "na"}-${idx}`} className="flex items-center gap-2 text-sm text-[#5f6f84]">
-                            <FileText className="h-4 w-4" />
-                            <span className="truncate">{source.source ?? "Unknown source"}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleSources(message.id)}
+                        className="inline-flex items-center gap-2 rounded-md border border-[#d8e0eb] px-3 py-2 text-sm font-bold text-[#4f5f78] hover:bg-[#f8fbff]"
+                      >
+                        {expandedSourceMessages.has(message.id) ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                        {expandedSourceMessages.has(message.id) ? "참고 문서 숨기기" : "참고 문서 보기"} ({message.sources.length})
+                      </button>
+                      {expandedSourceMessages.has(message.id) && (
+                        <div className="mt-3 space-y-3">
+                          {message.sources.map((source, idx) => (
+                            <div key={`${source.chunk_id ?? "na"}-${idx}`} className="rounded-lg border border-[#e7edf5] bg-[#f9fbff] px-3 py-3 text-sm text-[#4f5f78]">
+                              <div className="flex items-center gap-2 font-bold text-[#334155]">
+                                <FileText className="h-4 w-4 flex-none text-[#64748b]" />
+                                <span>용어명: {sourceTermLabel(source)}</span>
+                              </div>
+                              <p className="mt-2 leading-6">용어 설명: {sourceExplanation(source)}</p>
+                              <p className="mt-1 text-[#64748b]">연관 용어: {sourceRelatedTerms(source)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -129,6 +203,16 @@ export function ChatPage(): JSX.Element {
         ) : (
           <div className="flex h-full min-h-[360px] items-center justify-center rounded-lg border border-dashed border-[#dbe2ec] bg-[#f9fbff] text-sm text-[#8a97aa]">
             질문을 입력하면 대화가 시작됩니다.
+          </div>
+        )}
+        {showPendingBubble && (
+          <div className="flex items-start gap-3">
+            <div className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#0b4476] text-white">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div className="rounded-xl border border-[#dfe5ed] bg-white px-4 py-4">
+              <TypingDots />
+            </div>
           </div>
         )}
       </div>

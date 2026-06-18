@@ -14,6 +14,9 @@ class SourceItem(BaseModel):
     chunk_id: str | None = None
     source: str | None = None
     text: str
+    term: str | None = None
+    explanation: str | None = None
+    related_terms: list[str] = Field(default_factory=list)
 
 
 class ClassifierInfo(BaseModel):

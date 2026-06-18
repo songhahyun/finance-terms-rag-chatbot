@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from typing import Any
 
 import requests
 from requests import HTTPError
@@ -29,6 +30,7 @@ class OllamaClient:
             "top_p": top_p,
             "repeat_penalty": repeat_penalty,
         }
+        self.last_response_metadata: dict[str, Any] | None = None
 
     def _options(
         self,
@@ -78,7 +80,9 @@ class OllamaClient:
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
         self._raise_for_status(response)
-        return response.json().get("response", "").strip()
+        payload = response.json()
+        self.last_response_metadata = dict(payload)
+        return payload.get("response", "").strip()
 
     def generate_stream(
         self,
@@ -99,6 +103,7 @@ class OllamaClient:
             "options": self._options(num_predict, options),
         }
         parts: list[str] = []
+        self.last_response_metadata = None
         with requests.post(url, json=payload, timeout=self.timeout, stream=True) as response:
             self._raise_for_status(response)
             for line in response.iter_lines(decode_unicode=True):
@@ -111,6 +116,7 @@ class OllamaClient:
                     if on_chunk is not None:
                         on_chunk(text)
                 if packet.get("done"):
+                    self.last_response_metadata = dict(packet)
                     break
         return "".join(parts).strip()
 
@@ -133,4 +139,6 @@ class OllamaClient:
         }
         response = requests.post(url, json=payload, timeout=self.timeout)
         self._raise_for_status(response)
-        return response.json()["message"]["content"].strip()
+        payload = response.json()
+        self.last_response_metadata = dict(payload)
+        return payload["message"]["content"].strip()

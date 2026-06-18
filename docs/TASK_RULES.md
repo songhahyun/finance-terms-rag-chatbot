@@ -284,7 +284,33 @@ NEED_USER_CONFIRMATION: This task appears to require pushing commits, but `git p
 
 ---
 
-## 12. Reporting Rule
+## 12. Code Documentation Rule
+
+- When creating or modifying Python modules, add concise English docstrings to every new or changed public class, public function, and internal helper function.
+- Use English section comments to divide modules into clear functional areas when the file contains multiple responsibilities or logical blocks.
+- Prefer short, practical docstrings that explain purpose and behavior, not implementation details that are already obvious from the code.
+- Do not add noisy comments that merely restate a single line of code.
+- Preserve existing documentation style when a file already has a clear convention.
+- If a task only changes a tiny implementation detail and adding documentation would create clutter, keep documentation changes limited to the touched function or nearby section.
+
+Recommended section comment format:
+
+```python
+# ---------------------------------------------------------------------------
+# Query normalization and dictionary lookup
+# ---------------------------------------------------------------------------
+```
+
+Recommended docstring style:
+
+```python
+def classify(query: str) -> QueryIntentResult:
+    """Classify a query into the routing intent used by the RAG service."""
+```
+
+---
+
+## 13. Reporting Rule
 
 After each task, report:
 
@@ -323,7 +349,7 @@ Assumptions / unresolved:
 
 ---
 
-## 13. Stop Conditions
+## 14. Stop Conditions
 
 Stop immediately and ask for confirmation if:
 
@@ -345,7 +371,7 @@ NEED_USER_CONFIRMATION: <question or reason>
 
 ---
 
-## 14. Final Rule
+## 15. Final Rule
 
 Codex should complete the requested task work, run tests, and create local commits only.
 
