@@ -149,6 +149,28 @@ The monitor data should follow this schema:
 - Keep Recharts data-point hover behavior available for chart values.
 - Do not implement websocket or realtime streaming as part of this task.
 
+### Task 005-10: Dashboard content tabs
+- Keep the top dashboard summary cards visible at all times:
+  - `total_rows`
+  - `error_rows`
+  - warning rows
+  - last refresh
+- Replace the always-visible stacked dashboard content below the summary cards with tabs.
+- Add three tabs:
+  - `Stage summary`
+  - `Throughput charts`
+  - `Recent logs`
+- Show only the selected tab panel below the summary cards.
+- Move the existing stage summary component into the `Stage summary` tab.
+- Move the existing throughput chart components into the `Throughput charts` tab.
+- Move the existing recent logs component into the `Recent logs` tab.
+- Preserve each component's current behavior inside its tab:
+  - chart legends and hover explanations still work
+  - recent logs filtering and pagination still work
+  - manual refresh still refreshes all dashboard data
+- Keep the tab UI consistent with the existing `frontend-web` dashboard styling.
+- Do not introduce websocket or realtime streaming as part of this task.
+
 ## 4. Acceptance criteria
 
 - A new dashboard page is available from the left menu as the dashboard entry.
@@ -165,6 +187,8 @@ The monitor data should follow this schema:
 - Retrieval throughput charts display RPS labels using the new `calls/sec` values.
 - Generation RPM and TPM charts use the documented approximate formulas until token counting is added.
 - Throughput chart legends expose hover explanations using `@radix-ui/react-tooltip` and Recharts custom legend content.
+- The top summary cards remain visible above dashboard content tabs.
+- `Stage summary`, `Throughput charts`, and `Recent logs` are shown as separate tabs, with only the selected panel visible.
 
 ## 5. Example dashboard layout
 
@@ -174,16 +198,19 @@ The monitor data should follow this schema:
 - `Warning rows` (if any)
 - `Last refresh` timestamp
 
-### Middle row: stage summaries + throughput chart
-Left side:
+### Tabbed content below summary cards
+
+#### Stage summary tab
 - A summary block for each stage:
   - `intent_classification`: total / success / fail, avg elapsed, RPS
   - `retrieval`: total / success / fail, avg elapsed, QPS
   - `generation`: total / success / fail, avg elapsed, TPS / RPM / TPM
-Right side:
-- Stacked bar chart showing stage throughput by type (RPS/QPS/TPS+RPM+TPM)
 
-### Bottom row: recent logs panel
+#### Throughput charts tab
+- Split charts by raw stage name and metric as specified in Task 005-8.
+- Keep chart legends and hover explanations from Task 005-9.
+
+#### Recent logs tab
 - `Errors only` toggle
 - `Rows per page` dropdown: 20 / 50 / 100
 - Nested page buttons: 1–20, 21–40, 41–60, ...
