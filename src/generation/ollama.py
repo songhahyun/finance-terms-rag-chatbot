@@ -28,6 +28,8 @@ class OllamaGenerator(BaseGenerator):
             repeat_penalty=repeat_penalty,
             keep_alive=keep_alive,
         )
+        self.provider = "ollama"
+        self.model = model
 
     def generate(
         self,
@@ -42,3 +44,8 @@ class OllamaGenerator(BaseGenerator):
         if stream:
             return self.client.generate_stream(prompt, on_chunk=on_chunk, options=options)
         return self.client.generate(prompt, options=options)
+
+    @property
+    def last_usage(self) -> dict | None:
+        """Expose the last Ollama response metadata for monitoring metrics."""
+        return self.client.last_response_metadata

@@ -10,12 +10,12 @@ import type { DashboardStageSummary, MonitorRecentPaging, MonitorRecentRow, Moni
 const PAGE_SIZES = [20, 50, 100] as const;
 const CHART_PAGE_SIZE = 100;
 const THROUGHPUT_CHARTS = [
-  { stage: "stage_0_intent_classification", metric: "rps", label: "RPS", type: "line", color: "#0ea5e9" },
-  { stage: "stage_1_retrieval_bm25", metric: "rps", label: "RPS", type: "line", color: "#14b8a6" },
-  { stage: "stage_1_retrieval_dense", metric: "rps", label: "RPS", type: "line", color: "#6366f1" },
-  { stage: "stage_1_retrieval_fusion", metric: "rps", label: "RPS", type: "line", color: "#f59e0b" },
+  { stage: "stage_0_intent_classification", metric: "successful_rps", label: "Successful RPS", type: "line", color: "#0ea5e9" },
+  { stage: "stage_1_retrieval_bm25", metric: "successful_rps", label: "Successful RPS", type: "line", color: "#14b8a6" },
+  { stage: "stage_1_retrieval_dense", metric: "successful_rps", label: "Successful RPS", type: "line", color: "#6366f1" },
   { stage: "stage_2_generation", metric: "rpm", label: "RPM", type: "line", color: "#84cc16" },
-  { stage: "stage_2_generation", metric: "tpm", label: "TPM", type: "bar", color: "#ef4444" },
+  { stage: "stage_2_generation", metric: "output_tpm", label: "Output TPM", type: "bar", color: "#ef4444" },
+  { stage: "stage_2_generation", metric: "total_tpm", label: "Total TPM", type: "bar", color: "#a855f7" },
 ] as const;
 
 type ThroughputMetric = (typeof THROUGHPUT_CHARTS)[number]["metric"];
@@ -103,9 +103,12 @@ export function AdminDashboardPage(): JSX.Element {
             <h2 className="text-sm font-bold text-[#334155]">Stage summary</h2>
             <span className="text-xs font-semibold text-[#64748b]">{stageEntries.length} stages</span>
           </div>
-          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+          <div className="space-y-4">
             {stageEntries.length > 0 ? (
-              stageEntries.map(({ stage, metrics }) => <StageBlock key={stage} stage={stage} metrics={metrics} />)
+              <>
+                <CallBasedStageTable entries={stageEntries.filter(({ metrics }) => metrics.stage_type === "call_based")} />
+                <GenerationStageTable entries={stageEntries.filter(({ metrics }) => metrics.stage_type === "generation")} />
+              </>
             ) : (
               <EmptyState>스테이지 데이터가 없습니다.</EmptyState>
             )}
@@ -243,25 +246,81 @@ function SummaryCard({ label, value, tone = "default" }: { label: string; value:
   );
 }
 
-function StageBlock({ stage, metrics }: { stage: string; metrics: DashboardStageSummary }): JSX.Element {
+function CallBasedStageTable({ entries }: { entries: Array<{ stage: string; metrics: DashboardStageSummary }> }): JSX.Element {
+  if (entries.length === 0) return <EmptyState>Call-based stage data is unavailable.</EmptyState>;
   return (
-    <article className="rounded-lg border border-[#e6ebf1] bg-[#fbfdff] p-3">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="truncate text-sm font-extrabold text-[#111827]" title={stage}>
-          {stage}
-        </h3>
-        <span className="rounded-md bg-white px-2 py-1 text-xs font-bold text-[#64748b]">{formatPercent(metrics.success_rate)}</span>
-      </div>
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        <Metric label="total" value={metrics.total_rows} />
-        <Metric label="success" value={metrics.success_count} />
-        <Metric label="fail" value={metrics.fail_count} tone="danger" />
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <Metric label="avg elapsed" value={`${formatNumber(metrics.avg_elapsed_sec, 3)}s`} />
-        <Metric label="throughput" value={formatThroughput(metrics.throughput)} />
-      </div>
-    </article>
+    <div className="overflow-auto rounded-lg border border-[#e6ebf1]">
+      <table className="w-full min-w-[760px] border-collapse text-xs">
+        <thead className="bg-[#f8faff] text-[#607188]">
+          <tr>
+            <Th>stage</Th>
+            <Th>elapsed_sec</Th>
+            <Th>attempted_rps</Th>
+            <Th>successful_rps</Th>
+            <Th>success_count</Th>
+            <Th>result_count</Th>
+            <Th>status</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(({ stage, metrics }) => (
+            <tr key={stage} className="border-t border-[#edf2f7] text-[#334155]">
+              <Td className="font-mono text-xs">{stage}</Td>
+              <Td>{formatNumber(metrics.elapsed_sec ?? metrics.avg_elapsed_sec, 4)}</Td>
+              <Td>{formatNullable(metrics.attempted_rps, 4)}</Td>
+              <Td>{formatNullable(metrics.successful_rps, 4)}</Td>
+              <Td>{formatNullable(metrics.stage_type === "call_based" && stage === "stage_1_retrieval_fusion" ? null : metrics.success_count, 0)}</Td>
+              <Td>{formatNullable(metrics.result_count, 0)}</Td>
+              <Td>{metrics.status ? <StatusBadge status={metrics.status} /> : "N/A"}</Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function GenerationStageTable({ entries }: { entries: Array<{ stage: string; metrics: DashboardStageSummary }> }): JSX.Element | null {
+  if (entries.length === 0) return null;
+  return (
+    <div className="overflow-auto rounded-lg border border-[#e6ebf1]">
+      <table className="w-full min-w-[1100px] border-collapse text-xs">
+        <thead className="bg-[#f8faff] text-[#607188]">
+          <tr>
+            <Th>stage</Th>
+            <Th>elapsed_sec</Th>
+            <Th>Output TPS</Th>
+            <Th>Chars/sec</Th>
+            <Th>RPM</Th>
+            <Th>Output TPM</Th>
+            <Th>Total TPM</Th>
+            <Th>input_tokens</Th>
+            <Th>output_tokens</Th>
+            <Th>total_tokens</Th>
+            <Th>token_count_source</Th>
+            <Th>status</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(({ stage, metrics }) => (
+            <tr key={stage} className="border-t border-[#edf2f7] text-[#334155]">
+              <Td className="font-mono text-xs">{stage}</Td>
+              <Td>{formatNumber(metrics.elapsed_sec ?? metrics.avg_elapsed_sec, 4)}</Td>
+              <Td>{formatNullable(metrics.output_tps, 4)}</Td>
+              <Td>{formatNullable(metrics.chars_per_sec, 4)}</Td>
+              <Td>{formatNullable(metrics.rpm, 4)}</Td>
+              <Td>{formatNullable(metrics.output_tpm, 4)}</Td>
+              <Td>{formatNullable(metrics.total_tpm, 4)}</Td>
+              <Td>{formatNullable(metrics.input_tokens, 0)}</Td>
+              <Td>{formatNullable(metrics.output_tokens, 0)}</Td>
+              <Td>{formatNullable(metrics.total_tokens, 0)}</Td>
+              <Td>{metrics.token_count_source ?? "unavailable"}</Td>
+              <Td>{metrics.status ? <StatusBadge status={metrics.status} /> : "N/A"}</Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -314,15 +373,6 @@ function ThroughputChart({
         </ResponsiveContainer>
       </div>
     </article>
-  );
-}
-
-function Metric({ label, value, tone = "default" }: { label: string; value: ReactNode; tone?: "default" | "danger" }): JSX.Element {
-  return (
-    <div>
-      <p className="font-bold text-[#64748b]">{label}</p>
-      <p className={`mt-1 break-words font-extrabold ${tone === "danger" ? "text-[#dc2626]" : "text-[#111827]"}`}>{value}</p>
-    </div>
   );
 }
 
@@ -403,23 +453,33 @@ function metricValue(row: MonitorRecentRow, metric: ThroughputMetric): number {
   if (metric === "rpm") {
     return row.elapsed_sec > 0 ? 60 / row.elapsed_sec : 0;
   }
-  if (metric === "tpm") {
-    return row.throughput * 60;
+  if (metric === "output_tpm") {
+    return (row.output_tokens_per_sec ?? 0) * 60;
   }
-  return row.throughput;
+  if (metric === "total_tpm") {
+    const elapsed = row.generation_elapsed_sec ?? row.elapsed_sec;
+    return row.total_tokens && elapsed > 0 ? (row.total_tokens / elapsed) * 60 : 0;
+  }
+  if (metric === "successful_rps") {
+    return row.successful_calls_per_sec ?? row.throughput;
+  }
+  return 0;
 }
 
 function metricDescription(stage: string, metric: ThroughputMetric): string {
   if (metric === "rpm") {
     return "RPM: approximate requests per minute for stage_2_generation, calculated as 60 / elapsed_sec.";
   }
-  if (metric === "tpm") {
-    return "TPM: approximate value for stage_2_generation, currently calculated as chars/sec * 60. A token_count() helper is planned for real token-based TPM.";
+  if (metric === "output_tpm") {
+    return "Output TPM: generated output tokens per minute for stage_2_generation.";
+  }
+  if (metric === "total_tpm") {
+    return "Total TPM: total input plus output tokens per minute for stage_2_generation.";
   }
   if (stage.startsWith("stage_1_retrieval")) {
-    return "RPS: retrieval requests per second. Uses the new calls/sec monitor throughput value from stage_1_retrieval_* logs.";
+    return "Successful RPS: retrieval calls completed successfully per second.";
   }
-  return "RPS: requests per second for intent classification. Uses the monitor throughput value from stage_0_intent_classification.";
+  return "Successful RPS: intent classification calls completed successfully per second.";
 }
 
 function formatNumber(value: number | undefined, digits = 2): string {
@@ -427,15 +487,9 @@ function formatNumber(value: number | undefined, digits = 2): string {
   return value.toFixed(digits);
 }
 
-function formatPercent(value: number | undefined): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "-";
-  return `${Math.round(value * 100)}%`;
-}
-
-function formatThroughput(throughput: Record<string, number>): string {
-  const entries = Object.entries(throughput);
-  if (entries.length === 0) return "-";
-  return entries.map(([key, value]) => `${key.toUpperCase()} ${formatNumber(value, 2)}`).join(" / ");
+function formatNullable(value: number | null | undefined, digits = 2): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "N/A";
+  return value.toFixed(digits);
 }
 
 function formatDateTime(value: string): string {

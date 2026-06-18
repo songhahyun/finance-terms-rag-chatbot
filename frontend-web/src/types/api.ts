@@ -65,12 +65,27 @@ export interface MonitorSummaryItem {
 }
 
 export interface DashboardStageSummary {
+  stage_type?: "call_based" | "generation" | "unknown" | string;
   total_rows: number;
   success_count: number;
   fail_count: number;
   avg_elapsed_sec: number;
   success_rate: number;
   throughput: Record<string, number>;
+  elapsed_sec?: number;
+  attempted_rps?: number | null;
+  successful_rps?: number | null;
+  result_count?: number | null;
+  status?: string | null;
+  output_tps?: number | null;
+  chars_per_sec?: number | null;
+  rpm?: number | null;
+  output_tpm?: number | null;
+  total_tpm?: number | null;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  total_tokens?: number | null;
+  token_count_source?: string | null;
 }
 
 export interface MonitorSummaryResponse {
@@ -101,6 +116,12 @@ export interface MonitorRecentRow {
   error_message: string;
   elapsed_sec: number;
   throughput: number;
+  attempted_calls_per_sec?: number | null;
+  successful_calls_per_sec?: number | null;
+  output_tokens_per_sec?: number | null;
+  chars_per_sec?: number | null;
+  total_tokens?: number | null;
+  generation_elapsed_sec?: number | null;
 }
 
 export interface MonitorRecentPagingPage {
