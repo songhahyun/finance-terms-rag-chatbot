@@ -36,6 +36,10 @@ export function getKnowledgeDocumentFilterGroup(value: string): string {
   return INITIAL_GROUP_MAP[initial] ?? initial;
 }
 
+function meaningfulRelatedTerms(terms: string[] | null | undefined): string[] {
+  return (terms ?? []).map((term) => term.trim()).filter((term) => term.length > 0 && term !== "없음");
+}
+
 export function KnowledgeDocumentsPage(): JSX.Element {
   const { token } = useAuth();
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -71,7 +75,7 @@ export function KnowledgeDocumentsPage(): JSX.Element {
       })
       .filter((document) => {
         if (!normalizedSearch) return true;
-        const searchable = [document.term, document.explanation, ...document.relatedTerms].join(" ").toLowerCase();
+        const searchable = [document.term, document.explanation, ...meaningfulRelatedTerms(document.relatedTerms)].join(" ").toLowerCase();
         return searchable.includes(normalizedSearch);
       })
       .sort((a, b) => a.term.localeCompare(b.term, "ko"));
@@ -117,23 +121,24 @@ export function KnowledgeDocumentsPage(): JSX.Element {
       {!isLoading && !error && (
         <div className="space-y-3">
           {filteredDocuments.length > 0 ? (
-            filteredDocuments.map((document) => (
-              <article key={document.id} className="rounded-xl border border-[#e6ebf1] bg-white p-5">
-                <h2 className="text-lg font-extrabold text-[#111827]">{document.term}</h2>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#334155]">{document.explanation}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {document.relatedTerms.length > 0 ? (
-                    document.relatedTerms.map((term) => (
-                      <span key={term} className="rounded-md bg-[#f1f5f9] px-2 py-1 text-xs font-semibold text-[#526174]">
-                        {term}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs font-medium text-[#9aa6b6]">연관검색어 없음</span>
+            filteredDocuments.map((document) => {
+              const relatedTerms = meaningfulRelatedTerms(document.relatedTerms);
+              return (
+                <article key={document.id} className="rounded-xl border border-[#e6ebf1] bg-white p-5">
+                  <h2 className="text-lg font-extrabold text-[#111827]">{document.term}</h2>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#334155]">{document.explanation}</p>
+                  {relatedTerms.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {relatedTerms.map((term) => (
+                        <span key={term} className="rounded-md bg-[#f1f5f9] px-2 py-1 text-xs font-semibold text-[#526174]">
+                          {term}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                </div>
-              </article>
-            ))
+                </article>
+              );
+            })
           ) : (
             <div className="rounded-xl border border-dashed border-[#dbe2ec] bg-[#f9fbff] p-8 text-center text-sm text-[#8a97aa]">
               조건에 맞는 지식 문서가 없습니다.
