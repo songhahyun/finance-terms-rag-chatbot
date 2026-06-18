@@ -403,6 +403,41 @@ finrag.conversations.user
   - Missing or malformed local settings do not break chat submission.
   - Frontend build/type checks pass.
 
+### Task 004-13: Frontend: Hide Empty Related Terms on Knowledge Documents Page
+
+- Status: Not started
+- Files:
+  - `frontend-web/src/pages/knowledge-documents-page.tsx` or the current page/component that renders the `지식 문서` menu
+  - `frontend-web/src/types/api.ts` if the knowledge document response type needs clarification
+- Context:
+  - The `지식 문서` menu displays entries from `data/processed/final_chunk.json`.
+  - Some entries have no related search terms and store this as:
+
+    ```json
+    {
+      "metadata": {
+        "연관검색어": "없음"
+      }
+    }
+    ```
+
+  - The current UI shows an explicit empty value such as `연관검색어: 없음`.
+- Work:
+  - When related terms are empty, missing, or normalized to `"없음"`, do not render the related-terms field at all.
+  - Treat these values as empty:
+    - `undefined`
+    - `null`
+    - empty string
+    - empty array
+    - `"없음"`
+    - arrays where every item is empty or `"없음"`
+  - Preserve the related-terms field when at least one meaningful related term exists.
+  - Keep this behavior scoped to the `지식 문서` page. Do not change the chat source-document UI unless this task is expanded.
+- Done when:
+  - A knowledge document such as `구속성예금` with `metadata.연관검색어 = "없음"` shows only the term and explanation, with no related-terms row/label.
+  - Knowledge documents with real related terms still show those terms.
+  - Frontend build/type checks pass.
+
 ## 5. Proposed Implementation
 
 ### 5.1 Backend Response Schema
@@ -494,6 +529,7 @@ In `app-shell.tsx`:
 - Sidebar can be expanded so recent conversation titles have more horizontal space.
 - New conversation titles summarize the first user question instead of using a fixed truncation only.
 - Settings screen retrieval options are reflected in subsequent chat API requests.
+- Knowledge documents with empty or `"없음"` related terms do not render the related-terms field.
 - Admin and regular user local chat histories are separated after logout/login.
 - Existing chat API consumers remain compatible with `chunk_id`, `source`, and `text`.
 
@@ -531,4 +567,5 @@ Manual browser checks:
 - verify the pending assistant bubble uses animated three dots
 - verify first-question title generation with a long Korean question
 - verify settings screen `searchMode` and `hybridTopK` affect subsequent `/api/chat` payloads
+- verify a knowledge document with `연관검색어: "없음"` hides the related-terms field
 - verify user-specific conversation history after admin/user logout-login switch
