@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import src.query_intent as intent_package
 from src.generation.query_intent import (
     CAPABILITY_ANSWER,
@@ -67,6 +69,58 @@ def test_finance_dictionary_loads_terms_once_from_path(tmp_path: Path) -> None:
     assert dictionary.terms == ("가산금리", "ETF")
     assert dictionary.normalized_to_terms["가산금리"] == ("가산금리",)
     assert dictionary.normalized_to_terms["etf"] == ("ETF",)
+
+
+def test_finance_dictionary_loads_json_canonical_terms(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text(
+        '[{"term":"가산금리","aliases":[]},{"term":"상장지수펀드(ETF)","aliases":["ETF"]}]',
+        encoding="utf-8",
+    )
+
+    dictionary = FinanceTermDictionary.load(path)
+
+    assert dictionary.terms == ("가산금리", "상장지수펀드(ETF)")
+    assert dictionary.normalized_to_terms["가산금리"] == ("가산금리",)
+    assert dictionary.normalized_to_terms["etf"] == ("상장지수펀드(ETF)",)
+
+
+def test_finance_dictionary_json_alias_matches_return_canonical_terms(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text(
+        '[{"term":"상장지수펀드(ETF)","aliases":["ETF","상장지수펀드"]}]',
+        encoding="utf-8",
+    )
+    dictionary = FinanceTermDictionary.load(path)
+
+    assert dictionary.find_matches("ETF 뜻 알려줘") == ["상장지수펀드(ETF)"]
+    assert dictionary.find_token_matches(["상장지수펀드"]) == ["상장지수펀드(ETF)"]
+
+
+def test_finance_dictionary_json_deduplicates_terms_and_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text(
+        (
+            "["
+            '{"term":"상장지수펀드(ETF)","aliases":["ETF","ETF","상장지수펀드"]},'
+            '{"term":"상장지수펀드(ETF)","aliases":["ignored"]}'
+            "]"
+        ),
+        encoding="utf-8",
+    )
+
+    dictionary = FinanceTermDictionary.load(path)
+
+    assert dictionary.terms == ("상장지수펀드(ETF)",)
+    assert dictionary.find_matches("ETF와 상장지수펀드 차이") == ["상장지수펀드(ETF)"]
+
+
+def test_finance_dictionary_json_rejects_invalid_records(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text('[{"term":"가산금리","aliases":"가산 금리"}]', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="aliases must be a list"):
+        FinanceTermDictionary.load(path)
 
 
 def test_finance_dictionary_matches_spacing_insensitive_korean_term(tmp_path: Path) -> None:
