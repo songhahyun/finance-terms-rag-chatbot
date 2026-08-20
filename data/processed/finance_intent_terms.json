@@ -1,0 +1,3158 @@
+[
+  {
+    "term": "가계부실위험지수(HDRI)",
+    "aliases": [
+      "가계부실위험지수",
+      "HDRI"
+    ]
+  },
+  {
+    "term": "가계수지",
+    "aliases": []
+  },
+  {
+    "term": "가계순저축률",
+    "aliases": []
+  },
+  {
+    "term": "가계신용통계",
+    "aliases": []
+  },
+  {
+    "term": "가계처분가능소득",
+    "aliases": []
+  },
+  {
+    "term": "가교은행",
+    "aliases": []
+  },
+  {
+    "term": "가동률",
+    "aliases": []
+  },
+  {
+    "term": "가변예치의무제도",
+    "aliases": []
+  },
+  {
+    "term": "가산금리",
+    "aliases": []
+  },
+  {
+    "term": "가상통화",
+    "aliases": []
+  },
+  {
+    "term": "가상통화공개(ICO)",
+    "aliases": [
+      "가상통화공개",
+      "ICO"
+    ]
+  },
+  {
+    "term": "간접금융/직접금융",
+    "aliases": []
+  },
+  {
+    "term": "간접세/직접세",
+    "aliases": []
+  },
+  {
+    "term": "감독자협의회",
+    "aliases": []
+  },
+  {
+    "term": "감응도계수",
+    "aliases": []
+  },
+  {
+    "term": "갑기금(Capital A)",
+    "aliases": [
+      "갑기금",
+      "Capital A"
+    ]
+  },
+  {
+    "term": "거시건전성 정책",
+    "aliases": []
+  },
+  {
+    "term": "거액결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "거액익스포저 규제",
+    "aliases": []
+  },
+  {
+    "term": "결제",
+    "aliases": []
+  },
+  {
+    "term": "결제리스크",
+    "aliases": []
+  },
+  {
+    "term": "결제부족자금 공동분담제",
+    "aliases": []
+  },
+  {
+    "term": "결제완결성",
+    "aliases": []
+  },
+  {
+    "term": "겸업주의/전업주의",
+    "aliases": []
+  },
+  {
+    "term": "경기",
+    "aliases": []
+  },
+  {
+    "term": "경기동향지수(경기확산지수)",
+    "aliases": [
+      "경기동향지수",
+      "경기확산지수"
+    ]
+  },
+  {
+    "term": "경기순응성",
+    "aliases": []
+  },
+  {
+    "term": "경기조절정책/경제안정화정책",
+    "aliases": []
+  },
+  {
+    "term": "경기종합지수",
+    "aliases": []
+  },
+  {
+    "term": "경상수지",
+    "aliases": []
+  },
+  {
+    "term": "경영실태평가/은행경영실태등급평가제도",
+    "aliases": []
+  },
+  {
+    "term": "경영지도비율",
+    "aliases": []
+  },
+  {
+    "term": "경영평가지표",
+    "aliases": []
+  },
+  {
+    "term": "경제성장률",
+    "aliases": []
+  },
+  {
+    "term": "경제심리지수",
+    "aliases": []
+  },
+  {
+    "term": "경제협력개발기구(OECD)",
+    "aliases": [
+      "경제협력개발기구",
+      "OECD"
+    ]
+  },
+  {
+    "term": "경제활동인구/비경제활동인구/경제활동참가율",
+    "aliases": []
+  },
+  {
+    "term": "경제후생지표",
+    "aliases": []
+  },
+  {
+    "term": "경직적 물가지수",
+    "aliases": []
+  },
+  {
+    "term": "계절변동조정시계열",
+    "aliases": []
+  },
+  {
+    "term": "계좌대체",
+    "aliases": []
+  },
+  {
+    "term": "고객확인절차(KYC)",
+    "aliases": [
+      "고객확인절차",
+      "KYC"
+    ]
+  },
+  {
+    "term": "고용률",
+    "aliases": []
+  },
+  {
+    "term": "고용보조지표",
+    "aliases": []
+  },
+  {
+    "term": "고용유발효과/취업유발효과",
+    "aliases": []
+  },
+  {
+    "term": "고정금리",
+    "aliases": []
+  },
+  {
+    "term": "고정금리부채권(SB)",
+    "aliases": [
+      "고정금리부채권",
+      "SB"
+    ]
+  },
+  {
+    "term": "고정분류여신",
+    "aliases": []
+  },
+  {
+    "term": "고정이하여신비율",
+    "aliases": []
+  },
+  {
+    "term": "고정자본소모",
+    "aliases": []
+  },
+  {
+    "term": "고정환율제도/자유변동환율제도",
+    "aliases": []
+  },
+  {
+    "term": "고통지수",
+    "aliases": []
+  },
+  {
+    "term": "골디락스경제",
+    "aliases": []
+  },
+  {
+    "term": "공개시장운영",
+    "aliases": []
+  },
+  {
+    "term": "공공재",
+    "aliases": []
+  },
+  {
+    "term": "공급사용표(SUT)",
+    "aliases": [
+      "공급사용표",
+      "SUT"
+    ]
+  },
+  {
+    "term": "공급탄력성",
+    "aliases": []
+  },
+  {
+    "term": "공매도",
+    "aliases": []
+  },
+  {
+    "term": "관리변동환율제도",
+    "aliases": []
+  },
+  {
+    "term": "관리통화제도",
+    "aliases": []
+  },
+  {
+    "term": "교환사채(EB)",
+    "aliases": [
+      "교환사채",
+      "EB"
+    ]
+  },
+  {
+    "term": "교환성 통화",
+    "aliases": []
+  },
+  {
+    "term": "구매력평가환율",
+    "aliases": []
+  },
+  {
+    "term": "구속성예금",
+    "aliases": []
+  },
+  {
+    "term": "구인배율",
+    "aliases": []
+  },
+  {
+    "term": "구제금융",
+    "aliases": []
+  },
+  {
+    "term": "구조적 이익률",
+    "aliases": []
+  },
+  {
+    "term": "국가경쟁력지수",
+    "aliases": []
+  },
+  {
+    "term": "국가신용등급",
+    "aliases": []
+  },
+  {
+    "term": "국가채무",
+    "aliases": []
+  },
+  {
+    "term": "국고금 실시간 전자이체",
+    "aliases": []
+  },
+  {
+    "term": "국고대리점",
+    "aliases": []
+  },
+  {
+    "term": "국고수표",
+    "aliases": []
+  },
+  {
+    "term": "국고전산망",
+    "aliases": []
+  },
+  {
+    "term": "국내공급물가지수",
+    "aliases": []
+  },
+  {
+    "term": "국내신용",
+    "aliases": []
+  },
+  {
+    "term": "국내총생산(GDP)",
+    "aliases": [
+      "국내총생산",
+      "GDP"
+    ]
+  },
+  {
+    "term": "국내총투자율",
+    "aliases": []
+  },
+  {
+    "term": "국민계정체계(SNA)",
+    "aliases": [
+      "국민계정체계",
+      "SNA"
+    ]
+  },
+  {
+    "term": "국민대차대조표",
+    "aliases": []
+  },
+  {
+    "term": "국민부담률",
+    "aliases": []
+  },
+  {
+    "term": "국민소득",
+    "aliases": []
+  },
+  {
+    "term": "국민소득 3면 등가의 법칙",
+    "aliases": []
+  },
+  {
+    "term": "국민처분가능소득",
+    "aliases": []
+  },
+  {
+    "term": "국민총소득(GNI)",
+    "aliases": [
+      "국민총소득",
+      "GNI"
+    ]
+  },
+  {
+    "term": "국부펀드",
+    "aliases": []
+  },
+  {
+    "term": "국외순수취경상이전",
+    "aliases": []
+  },
+  {
+    "term": "국외순수취요소소득",
+    "aliases": []
+  },
+  {
+    "term": "국외저축",
+    "aliases": []
+  },
+  {
+    "term": "국제결제은행(BIS)",
+    "aliases": [
+      "국제결제은행",
+      "BIS"
+    ]
+  },
+  {
+    "term": "국제금융시장",
+    "aliases": []
+  },
+  {
+    "term": "국제금융중심지",
+    "aliases": []
+  },
+  {
+    "term": "국제산업연관표",
+    "aliases": []
+  },
+  {
+    "term": "국제수지(BOP)",
+    "aliases": [
+      "국제수지",
+      "BOP"
+    ]
+  },
+  {
+    "term": "국제수지표",
+    "aliases": []
+  },
+  {
+    "term": "국제원유가격",
+    "aliases": []
+  },
+  {
+    "term": "국제통화기금(IMF)",
+    "aliases": [
+      "국제통화기금",
+      "IMF"
+    ]
+  },
+  {
+    "term": "국제투자대조표(IIP)",
+    "aliases": [
+      "국제투자대조표",
+      "IIP"
+    ]
+  },
+  {
+    "term": "국제회계기준",
+    "aliases": []
+  },
+  {
+    "term": "국채",
+    "aliases": []
+  },
+  {
+    "term": "규모의 경제",
+    "aliases": []
+  },
+  {
+    "term": "규제 샌드박스",
+    "aliases": []
+  },
+  {
+    "term": "그램-리치-블라일리법",
+    "aliases": []
+  },
+  {
+    "term": "그린본드",
+    "aliases": []
+  },
+  {
+    "term": "그림자 금융",
+    "aliases": []
+  },
+  {
+    "term": "근원인플레이션율",
+    "aliases": []
+  },
+  {
+    "term": "글래스-스티걸법",
+    "aliases": []
+  },
+  {
+    "term": "글로벌가치사슬(GVC)",
+    "aliases": [
+      "글로벌가치사슬",
+      "GVC"
+    ]
+  },
+  {
+    "term": "글로벌금융안전망",
+    "aliases": []
+  },
+  {
+    "term": "금리선물",
+    "aliases": []
+  },
+  {
+    "term": "금리스왑",
+    "aliases": []
+  },
+  {
+    "term": "금리자유화",
+    "aliases": []
+  },
+  {
+    "term": "금리평가이론",
+    "aliases": []
+  },
+  {
+    "term": "금본위제",
+    "aliases": []
+  },
+  {
+    "term": "금산분리",
+    "aliases": []
+  },
+  {
+    "term": "금융 하부구조",
+    "aliases": []
+  },
+  {
+    "term": "금융EDI",
+    "aliases": []
+  },
+  {
+    "term": "금융공황",
+    "aliases": []
+  },
+  {
+    "term": "금융사이클",
+    "aliases": []
+  },
+  {
+    "term": "금융시스템 상호연계성",
+    "aliases": []
+  },
+  {
+    "term": "금융안정",
+    "aliases": []
+  },
+  {
+    "term": "금융안정위원회(FSB)",
+    "aliases": [
+      "금융안정위원회",
+      "FSB"
+    ]
+  },
+  {
+    "term": "금융안정지수",
+    "aliases": []
+  },
+  {
+    "term": "금융연관비율(골드스미스비율)",
+    "aliases": [
+      "금융연관비율",
+      "골드스미스비율"
+    ]
+  },
+  {
+    "term": "금융의 증권화",
+    "aliases": []
+  },
+  {
+    "term": "금융의 탈중개화",
+    "aliases": []
+  },
+  {
+    "term": "금융의 탈집중화",
+    "aliases": []
+  },
+  {
+    "term": "금융제도",
+    "aliases": []
+  },
+  {
+    "term": "금융중개지원대출제도",
+    "aliases": []
+  },
+  {
+    "term": "금융지주회사",
+    "aliases": []
+  },
+  {
+    "term": "금융채",
+    "aliases": []
+  },
+  {
+    "term": "금융통화위원회",
+    "aliases": []
+  },
+  {
+    "term": "금전신탁",
+    "aliases": []
+  },
+  {
+    "term": "기대인플레이션",
+    "aliases": []
+  },
+  {
+    "term": "기본자본(Tier 1)",
+    "aliases": [
+      "기본자본",
+      "Tier 1"
+    ]
+  },
+  {
+    "term": "기업･개인간(B2C) 지급결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "기업간(B2B) 지급결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "기업경기실사지수(BSI)",
+    "aliases": [
+      "기업경기실사지수",
+      "BSI"
+    ]
+  },
+  {
+    "term": "기업공개",
+    "aliases": []
+  },
+  {
+    "term": "기업어음(CP)",
+    "aliases": [
+      "기업어음",
+      "CP"
+    ]
+  },
+  {
+    "term": "기저효과",
+    "aliases": []
+  },
+  {
+    "term": "기준금리",
+    "aliases": []
+  },
+  {
+    "term": "기준순환일",
+    "aliases": []
+  },
+  {
+    "term": "기준환율",
+    "aliases": []
+  },
+  {
+    "term": "기초가격",
+    "aliases": []
+  },
+  {
+    "term": "기축통화",
+    "aliases": []
+  },
+  {
+    "term": "기타기본자본(Additional Tier 1)",
+    "aliases": [
+      "기타기본자본",
+      "Additional Tier 1"
+    ]
+  },
+  {
+    "term": "기펜재",
+    "aliases": []
+  },
+  {
+    "term": "기회비용",
+    "aliases": []
+  },
+  {
+    "term": "긴급수입제한조치",
+    "aliases": []
+  },
+  {
+    "term": "긴축정책",
+    "aliases": []
+  },
+  {
+    "term": "꼬리위험",
+    "aliases": []
+  },
+  {
+    "term": "낙수효과",
+    "aliases": []
+  },
+  {
+    "term": "낙인효과",
+    "aliases": []
+  },
+  {
+    "term": "난외거래",
+    "aliases": []
+  },
+  {
+    "term": "납부자자동이체",
+    "aliases": []
+  },
+  {
+    "term": "내국신용장",
+    "aliases": []
+  },
+  {
+    "term": "내부등급법",
+    "aliases": []
+  },
+  {
+    "term": "내부자금",
+    "aliases": []
+  },
+  {
+    "term": "노동생산성/노동생산성지수",
+    "aliases": []
+  },
+  {
+    "term": "노동소득분배율",
+    "aliases": []
+  },
+  {
+    "term": "녹색GDP",
+    "aliases": []
+  },
+  {
+    "term": "녹색기후기금(GCF)",
+    "aliases": [
+      "녹색기후기금",
+      "GCF"
+    ]
+  },
+  {
+    "term": "단기금융시장",
+    "aliases": []
+  },
+  {
+    "term": "단리/복리",
+    "aliases": []
+  },
+  {
+    "term": "단위노동비용",
+    "aliases": []
+  },
+  {
+    "term": "단일금리방식/복수금리방식",
+    "aliases": []
+  },
+  {
+    "term": "담보인정비율(LTV)",
+    "aliases": [
+      "담보인정비율",
+      "LTV"
+    ]
+  },
+  {
+    "term": "당일결제/익일결제/익익일결제",
+    "aliases": []
+  },
+  {
+    "term": "대기성 여수신제도",
+    "aliases": []
+  },
+  {
+    "term": "대량지급",
+    "aliases": []
+  },
+  {
+    "term": "대손충당금적립비율",
+    "aliases": []
+  },
+  {
+    "term": "대안정기",
+    "aliases": []
+  },
+  {
+    "term": "대외의존도/수출입의존도/무역의존도",
+    "aliases": []
+  },
+  {
+    "term": "대외지급준비자산",
+    "aliases": []
+  },
+  {
+    "term": "대체비용리스크",
+    "aliases": []
+  },
+  {
+    "term": "대체재",
+    "aliases": []
+  },
+  {
+    "term": "대출금 출자전환",
+    "aliases": []
+  },
+  {
+    "term": "대출채권 분할매각",
+    "aliases": []
+  },
+  {
+    "term": "더블딥",
+    "aliases": []
+  },
+  {
+    "term": "도덕적 해이",
+    "aliases": []
+  },
+  {
+    "term": "도드-프랭크법",
+    "aliases": []
+  },
+  {
+    "term": "독점/과점",
+    "aliases": []
+  },
+  {
+    "term": "동남아시아국가연합(ASEAN)",
+    "aliases": [
+      "동남아시아국가연합",
+      "ASEAN"
+    ]
+  },
+  {
+    "term": "동남아시아국가연합+한･중･일(ASEAN+3)",
+    "aliases": [
+      "동남아시아국가연합+한･중･일",
+      "ASEAN+3"
+    ]
+  },
+  {
+    "term": "동남아중앙은행기구(SEACEN)",
+    "aliases": [
+      "동남아중앙은행기구",
+      "SEACEN"
+    ]
+  },
+  {
+    "term": "동아시아 외환위기",
+    "aliases": []
+  },
+  {
+    "term": "동아시아･태평양중앙은행기구(EMEAP)",
+    "aliases": [
+      "동아시아･태평양중앙은행기구",
+      "EMEAP"
+    ]
+  },
+  {
+    "term": "동일인 신용공여한도제(동일인 여신한도제)",
+    "aliases": [
+      "동일인 신용공여한도제",
+      "동일인 여신한도제"
+    ]
+  },
+  {
+    "term": "동일인/특수관계인",
+    "aliases": []
+  },
+  {
+    "term": "동태적 대손충당금 제도",
+    "aliases": []
+  },
+  {
+    "term": "동행종합지수",
+    "aliases": []
+  },
+  {
+    "term": "듀레이션",
+    "aliases": []
+  },
+  {
+    "term": "등록발행",
+    "aliases": []
+  },
+  {
+    "term": "디레버리징",
+    "aliases": []
+  },
+  {
+    "term": "디스인플레이션",
+    "aliases": []
+  },
+  {
+    "term": "디커플링/커플링",
+    "aliases": []
+  },
+  {
+    "term": "디플레이션",
+    "aliases": []
+  },
+  {
+    "term": "래퍼곡선",
+    "aliases": []
+  },
+  {
+    "term": "레그테크",
+    "aliases": []
+  },
+  {
+    "term": "레버리지 효과",
+    "aliases": []
+  },
+  {
+    "term": "레버리지비율",
+    "aliases": []
+  },
+  {
+    "term": "로렌츠곡선",
+    "aliases": []
+  },
+  {
+    "term": "로보어드바이저",
+    "aliases": []
+  },
+  {
+    "term": "리디노미네이션",
+    "aliases": []
+  },
+  {
+    "term": "마샬의 k",
+    "aliases": []
+  },
+  {
+    "term": "마스트리히트조약",
+    "aliases": []
+  },
+  {
+    "term": "마이크로 크레디트",
+    "aliases": []
+  },
+  {
+    "term": "마찰적 실업",
+    "aliases": []
+  },
+  {
+    "term": "만기수익률",
+    "aliases": []
+  },
+  {
+    "term": "매매보호 서비스(escrow)",
+    "aliases": [
+      "매매보호 서비스",
+      "escrow"
+    ]
+  },
+  {
+    "term": "매몰비용",
+    "aliases": []
+  },
+  {
+    "term": "매입외환/환가료",
+    "aliases": []
+  },
+  {
+    "term": "매출액영업이익률",
+    "aliases": []
+  },
+  {
+    "term": "머니마켓펀드(MMF)",
+    "aliases": [
+      "머니마켓펀드",
+      "MMF"
+    ]
+  },
+  {
+    "term": "명목GDP목표제",
+    "aliases": []
+  },
+  {
+    "term": "명목국내총생산/실질국내총생산",
+    "aliases": []
+  },
+  {
+    "term": "명목금리/실질금리",
+    "aliases": []
+  },
+  {
+    "term": "명목소득/실질소득",
+    "aliases": []
+  },
+  {
+    "term": "모기지대출",
+    "aliases": []
+  },
+  {
+    "term": "모바일뱅킹",
+    "aliases": []
+  },
+  {
+    "term": "모집",
+    "aliases": []
+  },
+  {
+    "term": "무디스",
+    "aliases": []
+  },
+  {
+    "term": "무역지수",
+    "aliases": []
+  },
+  {
+    "term": "물가안정목표제",
+    "aliases": []
+  },
+  {
+    "term": "물가지수",
+    "aliases": []
+  },
+  {
+    "term": "뮤추얼펀드",
+    "aliases": []
+  },
+  {
+    "term": "미달러화 지수",
+    "aliases": []
+  },
+  {
+    "term": "미달러화페그제도",
+    "aliases": []
+  },
+  {
+    "term": "미발행화폐",
+    "aliases": []
+  },
+  {
+    "term": "바이오인증",
+    "aliases": []
+  },
+  {
+    "term": "바젤은행감독위원회/바젤위원회(BCBS)",
+    "aliases": [
+      "바젤은행감독위원회/바젤위원회",
+      "BCBS"
+    ]
+  },
+  {
+    "term": "발행시장",
+    "aliases": []
+  },
+  {
+    "term": "발행중지화폐/유통정지화폐",
+    "aliases": []
+  },
+  {
+    "term": "방카슈랑스",
+    "aliases": []
+  },
+  {
+    "term": "배당할인모형",
+    "aliases": []
+  },
+  {
+    "term": "밴드웨건효과",
+    "aliases": []
+  },
+  {
+    "term": "뱅크런",
+    "aliases": []
+  },
+  {
+    "term": "범위의 경제",
+    "aliases": []
+  },
+  {
+    "term": "법률리스크",
+    "aliases": []
+  },
+  {
+    "term": "베블런효과",
+    "aliases": []
+  },
+  {
+    "term": "변동금리",
+    "aliases": []
+  },
+  {
+    "term": "변동금리부채권(FRN)",
+    "aliases": [
+      "변동금리부채권",
+      "FRN"
+    ]
+  },
+  {
+    "term": "보기화폐(견양화폐)",
+    "aliases": [
+      "보기화폐",
+      "견양화폐"
+    ]
+  },
+  {
+    "term": "보완자본(Tier 2)",
+    "aliases": [
+      "보완자본",
+      "Tier 2"
+    ]
+  },
+  {
+    "term": "보완재",
+    "aliases": []
+  },
+  {
+    "term": "보통주자본(Common Equity Tier 1)",
+    "aliases": [
+      "보통주자본",
+      "Common Equity Tier 1"
+    ]
+  },
+  {
+    "term": "보호무역주의",
+    "aliases": []
+  },
+  {
+    "term": "복수통화바스켓제도",
+    "aliases": []
+  },
+  {
+    "term": "본원소득",
+    "aliases": []
+  },
+  {
+    "term": "본원소득수지",
+    "aliases": []
+  },
+  {
+    "term": "본원통화",
+    "aliases": []
+  },
+  {
+    "term": "볼커룰",
+    "aliases": []
+  },
+  {
+    "term": "부가가치",
+    "aliases": []
+  },
+  {
+    "term": "부가가치기준 무역(TiVA)",
+    "aliases": [
+      "부가가치기준 무역",
+      "TiVA"
+    ]
+  },
+  {
+    "term": "부가가치유발계수/부가가치계수",
+    "aliases": []
+  },
+  {
+    "term": "부동화/무권화",
+    "aliases": []
+  },
+  {
+    "term": "부실채권정리기금",
+    "aliases": []
+  },
+  {
+    "term": "부채담보부증권(CDO)",
+    "aliases": [
+      "부채담보부증권",
+      "CDO"
+    ]
+  },
+  {
+    "term": "부채비율",
+    "aliases": []
+  },
+  {
+    "term": "북미자유무역협정(NAFTA)",
+    "aliases": [
+      "북미자유무역협정",
+      "NAFTA"
+    ]
+  },
+  {
+    "term": "분리결제",
+    "aliases": []
+  },
+  {
+    "term": "분산원장기술",
+    "aliases": []
+  },
+  {
+    "term": "분수효과",
+    "aliases": []
+  },
+  {
+    "term": "불완전경쟁시장",
+    "aliases": []
+  },
+  {
+    "term": "불태화정책",
+    "aliases": []
+  },
+  {
+    "term": "브레튼우즈체제",
+    "aliases": []
+  },
+  {
+    "term": "브렉시트(Brexit)",
+    "aliases": [
+      "브렉시트",
+      "Brexit"
+    ]
+  },
+  {
+    "term": "브릭스",
+    "aliases": []
+  },
+  {
+    "term": "블록체인",
+    "aliases": []
+  },
+  {
+    "term": "블록체인과 탈중앙화",
+    "aliases": []
+  },
+  {
+    "term": "비관측경제(NOE)",
+    "aliases": [
+      "비관측경제",
+      "NOE"
+    ]
+  },
+  {
+    "term": "비교우위",
+    "aliases": []
+  },
+  {
+    "term": "비용인상 인플레이션",
+    "aliases": []
+  },
+  {
+    "term": "비트코인",
+    "aliases": []
+  },
+  {
+    "term": "빅데이터",
+    "aliases": []
+  },
+  {
+    "term": "빅맥지수",
+    "aliases": []
+  },
+  {
+    "term": "사이버리스크",
+    "aliases": []
+  },
+  {
+    "term": "사전담보제",
+    "aliases": []
+  },
+  {
+    "term": "사전적 정책방향 제시(forward guidance)",
+    "aliases": [
+      "사전적 정책방향 제시",
+      "forward guidance"
+    ]
+  },
+  {
+    "term": "4차 산업혁명",
+    "aliases": []
+  },
+  {
+    "term": "사회보장제도",
+    "aliases": []
+  },
+  {
+    "term": "사회보험",
+    "aliases": []
+  },
+  {
+    "term": "산업연관표(I/O Tables)",
+    "aliases": [
+      "산업연관표",
+      "I",
+      "O Tables"
+    ]
+  },
+  {
+    "term": "삼불원칙",
+    "aliases": []
+  },
+  {
+    "term": "상계관세",
+    "aliases": []
+  },
+  {
+    "term": "상대적 빈곤율",
+    "aliases": []
+  },
+  {
+    "term": "상시감시제도/상시감시전담데스크",
+    "aliases": []
+  },
+  {
+    "term": "상장지수펀드(ETF)",
+    "aliases": [
+      "상장지수펀드",
+      "ETF"
+    ]
+  },
+  {
+    "term": "상품공동기금(CFC)",
+    "aliases": [
+      "상품공동기금",
+      "CFC"
+    ]
+  },
+  {
+    "term": "상품수지",
+    "aliases": []
+  },
+  {
+    "term": "생산세",
+    "aliases": []
+  },
+  {
+    "term": "생산유발효과",
+    "aliases": []
+  },
+  {
+    "term": "생산자물가지수(PPI)",
+    "aliases": [
+      "생산자물가지수",
+      "PPI"
+    ]
+  },
+  {
+    "term": "생산자제품재고지수",
+    "aliases": []
+  },
+  {
+    "term": "생산자제품출하지수/생산자출하지수",
+    "aliases": []
+  },
+  {
+    "term": "생활물가지수",
+    "aliases": []
+  },
+  {
+    "term": "서비스수지",
+    "aliases": []
+  },
+  {
+    "term": "서킷브레이커",
+    "aliases": []
+  },
+  {
+    "term": "선물거래",
+    "aliases": []
+  },
+  {
+    "term": "선물환거래",
+    "aliases": []
+  },
+  {
+    "term": "선불카드/선불전자지급수단",
+    "aliases": []
+  },
+  {
+    "term": "선행종합지수",
+    "aliases": []
+  },
+  {
+    "term": "성장기여도",
+    "aliases": []
+  },
+  {
+    "term": "세계경제포럼(다보스포럼)",
+    "aliases": [
+      "세계경제포럼",
+      "다보스포럼"
+    ]
+  },
+  {
+    "term": "세계무역기구(WTO)",
+    "aliases": [
+      "세계무역기구",
+      "WTO"
+    ]
+  },
+  {
+    "term": "세계은행(World Bank)",
+    "aliases": [
+      "세계은행",
+      "World Bank"
+    ]
+  },
+  {
+    "term": "소득5분위배율",
+    "aliases": []
+  },
+  {
+    "term": "소득교역조건/소득교역조건지수",
+    "aliases": []
+  },
+  {
+    "term": "소득주도성장",
+    "aliases": []
+  },
+  {
+    "term": "소비의 비가역성",
+    "aliases": []
+  },
+  {
+    "term": "소비자동향지수(CSI)",
+    "aliases": [
+      "소비자동향지수",
+      "CSI"
+    ]
+  },
+  {
+    "term": "소비자물가지수(CPI)",
+    "aliases": [
+      "소비자물가지수",
+      "CPI"
+    ]
+  },
+  {
+    "term": "소비자심리지수",
+    "aliases": []
+  },
+  {
+    "term": "소액결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "속물효과(스놉효과)",
+    "aliases": [
+      "속물효과",
+      "스놉효과"
+    ]
+  },
+  {
+    "term": "수요견인 인플레이션",
+    "aliases": []
+  },
+  {
+    "term": "수요탄력성",
+    "aliases": []
+  },
+  {
+    "term": "수입유발계수",
+    "aliases": []
+  },
+  {
+    "term": "수입징수관/지출관",
+    "aliases": []
+  },
+  {
+    "term": "수출경합도지수",
+    "aliases": []
+  },
+  {
+    "term": "수출보험",
+    "aliases": []
+  },
+  {
+    "term": "수출입물가지수",
+    "aliases": []
+  },
+  {
+    "term": "수출입물량지수",
+    "aliases": []
+  },
+  {
+    "term": "수쿠크",
+    "aliases": []
+  },
+  {
+    "term": "수확체감의 법칙",
+    "aliases": []
+  },
+  {
+    "term": "순상품교역조건",
+    "aliases": []
+  },
+  {
+    "term": "순안정자금조달비율",
+    "aliases": []
+  },
+  {
+    "term": "순이자마진(NIM)",
+    "aliases": [
+      "순이자마진",
+      "NIM"
+    ]
+  },
+  {
+    "term": "순이체한도제",
+    "aliases": []
+  },
+  {
+    "term": "숨은 그림(은화)",
+    "aliases": [
+      "숨은 그림",
+      "은화"
+    ]
+  },
+  {
+    "term": "슈퍼301조",
+    "aliases": []
+  },
+  {
+    "term": "스마트계약",
+    "aliases": []
+  },
+  {
+    "term": "스무딩오퍼레이션",
+    "aliases": []
+  },
+  {
+    "term": "스왑",
+    "aliases": []
+  },
+  {
+    "term": "스왑레이트",
+    "aliases": []
+  },
+  {
+    "term": "스태그플레이션",
+    "aliases": []
+  },
+  {
+    "term": "스탠더드 & 푸어스",
+    "aliases": []
+  },
+  {
+    "term": "스톡옵션",
+    "aliases": []
+  },
+  {
+    "term": "스트레스 테스트(위기상황분석)",
+    "aliases": [
+      "스트레스 테스트",
+      "위기상황분석"
+    ]
+  },
+  {
+    "term": "시뇨리지",
+    "aliases": []
+  },
+  {
+    "term": "시스템 리스크",
+    "aliases": []
+  },
+  {
+    "term": "시스템적으로 중요한 금융기관",
+    "aliases": []
+  },
+  {
+    "term": "시장리스크",
+    "aliases": []
+  },
+  {
+    "term": "시장평균환율제도",
+    "aliases": []
+  },
+  {
+    "term": "신용경색",
+    "aliases": []
+  },
+  {
+    "term": "신용레버리지",
+    "aliases": []
+  },
+  {
+    "term": "신용스프레드",
+    "aliases": []
+  },
+  {
+    "term": "신용연계증권(CLN)",
+    "aliases": [
+      "신용연계증권",
+      "CLN"
+    ]
+  },
+  {
+    "term": "신용위험(신용리스크)",
+    "aliases": [
+      "신용위험",
+      "신용리스크"
+    ]
+  },
+  {
+    "term": "신용창조",
+    "aliases": []
+  },
+  {
+    "term": "신용파생상품",
+    "aliases": []
+  },
+  {
+    "term": "신용평가제도",
+    "aliases": []
+  },
+  {
+    "term": "신용환산율",
+    "aliases": []
+  },
+  {
+    "term": "신･재생에너지",
+    "aliases": []
+  },
+  {
+    "term": "신주인수권부사채(BW)",
+    "aliases": [
+      "신주인수권부사채",
+      "BW"
+    ]
+  },
+  {
+    "term": "신흥시장국채권지수(EMBI+)",
+    "aliases": [
+      "신흥시장국채권지수",
+      "EMBI+"
+    ]
+  },
+  {
+    "term": "실망실업자",
+    "aliases": []
+  },
+  {
+    "term": "실물화폐/명목화폐",
+    "aliases": []
+  },
+  {
+    "term": "실업률",
+    "aliases": []
+  },
+  {
+    "term": "실업률갭",
+    "aliases": []
+  },
+  {
+    "term": "실질임금",
+    "aliases": []
+  },
+  {
+    "term": "실효환율",
+    "aliases": []
+  },
+  {
+    "term": "아세안+3 거시경제조사기구(AMRO)",
+    "aliases": [
+      "아세안+3 거시경제조사기구",
+      "AMRO"
+    ]
+  },
+  {
+    "term": "아시아개발은행(ADB)",
+    "aliases": [
+      "아시아개발은행",
+      "ADB"
+    ]
+  },
+  {
+    "term": "아시아인프라은행(AIIB)",
+    "aliases": [
+      "아시아인프라은행",
+      "AIIB"
+    ]
+  },
+  {
+    "term": "아시아태평양경제협력체(APEC)",
+    "aliases": [
+      "아시아태평양경제협력체",
+      "APEC"
+    ]
+  },
+  {
+    "term": "애그플레이션",
+    "aliases": []
+  },
+  {
+    "term": "양도성예금증서(CD)",
+    "aliases": [
+      "양도성예금증서",
+      "CD"
+    ]
+  },
+  {
+    "term": "양적완화정책",
+    "aliases": []
+  },
+  {
+    "term": "어음관리계좌(CMA)",
+    "aliases": [
+      "어음관리계좌",
+      "CMA"
+    ]
+  },
+  {
+    "term": "어음교환",
+    "aliases": []
+  },
+  {
+    "term": "업무지속계획",
+    "aliases": []
+  },
+  {
+    "term": "에너지바우처제도",
+    "aliases": []
+  },
+  {
+    "term": "엥겔의 법칙",
+    "aliases": []
+  },
+  {
+    "term": "여신심사 가이드라인",
+    "aliases": []
+  },
+  {
+    "term": "여신전문금융회사",
+    "aliases": []
+  },
+  {
+    "term": "역모기지론",
+    "aliases": []
+  },
+  {
+    "term": "역선택",
+    "aliases": []
+  },
+  {
+    "term": "역외금융",
+    "aliases": []
+  },
+  {
+    "term": "역외펀드",
+    "aliases": []
+  },
+  {
+    "term": "연방준비제도(FRS)/연방준비은행(FRB)",
+    "aliases": [
+      "연방준비제도(FRS)/연방준비은행",
+      "FRB"
+    ]
+  },
+  {
+    "term": "연불수출",
+    "aliases": []
+  },
+  {
+    "term": "연쇄가중법",
+    "aliases": []
+  },
+  {
+    "term": "연지급수입",
+    "aliases": []
+  },
+  {
+    "term": "영업잉여",
+    "aliases": []
+  },
+  {
+    "term": "영향력계수",
+    "aliases": []
+  },
+  {
+    "term": "예금보험제도",
+    "aliases": []
+  },
+  {
+    "term": "예대금리차(예대마진)",
+    "aliases": [
+      "예대금리차",
+      "예대마진"
+    ]
+  },
+  {
+    "term": "예대율",
+    "aliases": []
+  },
+  {
+    "term": "예상손실",
+    "aliases": []
+  },
+  {
+    "term": "예약자금이체제도",
+    "aliases": []
+  },
+  {
+    "term": "옵션",
+    "aliases": []
+  },
+  {
+    "term": "와타나베 부인",
+    "aliases": []
+  },
+  {
+    "term": "완충자본",
+    "aliases": []
+  },
+  {
+    "term": "외국환거래법",
+    "aliases": []
+  },
+  {
+    "term": "외국환업무취급기관/외국환은행",
+    "aliases": []
+  },
+  {
+    "term": "외국환평형기금",
+    "aliases": []
+  },
+  {
+    "term": "외국환포지션",
+    "aliases": []
+  },
+  {
+    "term": "외국환포지션한도",
+    "aliases": []
+  },
+  {
+    "term": "외부자금",
+    "aliases": []
+  },
+  {
+    "term": "외부효과",
+    "aliases": []
+  },
+  {
+    "term": "외채/대외채권",
+    "aliases": []
+  },
+  {
+    "term": "외화가득액/외화가득율",
+    "aliases": []
+  },
+  {
+    "term": "외화자금시장",
+    "aliases": []
+  },
+  {
+    "term": "외환건전성부담금제도",
+    "aliases": []
+  },
+  {
+    "term": "외환결제리스크",
+    "aliases": []
+  },
+  {
+    "term": "외환동시결제(PVP)",
+    "aliases": [
+      "외환동시결제",
+      "PVP"
+    ]
+  },
+  {
+    "term": "외환보유액",
+    "aliases": []
+  },
+  {
+    "term": "외환스왑거래",
+    "aliases": []
+  },
+  {
+    "term": "외환시장",
+    "aliases": []
+  },
+  {
+    "term": "외환전산망",
+    "aliases": []
+  },
+  {
+    "term": "요소비용",
+    "aliases": []
+  },
+  {
+    "term": "요소비용 국민소득",
+    "aliases": []
+  },
+  {
+    "term": "우발부채(채무)",
+    "aliases": [
+      "우발부채",
+      "채무"
+    ]
+  },
+  {
+    "term": "우발전환사채(코코본드)",
+    "aliases": [
+      "우발전환사채",
+      "코코본드"
+    ]
+  },
+  {
+    "term": "운영리스크",
+    "aliases": []
+  },
+  {
+    "term": "워싱턴 컨센서스",
+    "aliases": []
+  },
+  {
+    "term": "워크아웃",
+    "aliases": []
+  },
+  {
+    "term": "원/위안 직거래시장",
+    "aliases": []
+  },
+  {
+    "term": "원금리스크",
+    "aliases": []
+  },
+  {
+    "term": "원금이자분리채권(STRIPS)",
+    "aliases": [
+      "원금이자분리채권",
+      "STRIPS"
+    ]
+  },
+  {
+    "term": "위험가중자산/위험가중치",
+    "aliases": []
+  },
+  {
+    "term": "위험기준자기자본비율(RBC비율)",
+    "aliases": [
+      "위험기준자기자본비율",
+      "RBC비율"
+    ]
+  },
+  {
+    "term": "유동비율",
+    "aliases": []
+  },
+  {
+    "term": "유동성",
+    "aliases": []
+  },
+  {
+    "term": "유동성 함정",
+    "aliases": []
+  },
+  {
+    "term": "유동성딜레마",
+    "aliases": []
+  },
+  {
+    "term": "유동성리스크",
+    "aliases": []
+  },
+  {
+    "term": "유동성커버리지비율",
+    "aliases": []
+  },
+  {
+    "term": "유럽부흥개발은행(EBRD)",
+    "aliases": [
+      "유럽부흥개발은행",
+      "EBRD"
+    ]
+  },
+  {
+    "term": "유럽연합(EU)",
+    "aliases": [
+      "유럽연합",
+      "EU"
+    ]
+  },
+  {
+    "term": "유럽중앙은행(ECB)",
+    "aliases": [
+      "유럽중앙은행",
+      "ECB"
+    ]
+  },
+  {
+    "term": "유로달러(Euro dollar)",
+    "aliases": [
+      "유로달러",
+      "Euro dollar"
+    ]
+  },
+  {
+    "term": "유로마켓(Euro market)",
+    "aliases": [
+      "유로마켓",
+      "Euro market"
+    ]
+  },
+  {
+    "term": "유리보(EURIBOR)",
+    "aliases": [
+      "유리보",
+      "EURIBOR"
+    ]
+  },
+  {
+    "term": "유통시장",
+    "aliases": []
+  },
+  {
+    "term": "은선",
+    "aliases": []
+  },
+  {
+    "term": "은행경영공시제도",
+    "aliases": []
+  },
+  {
+    "term": "은행인수어음(BA)",
+    "aliases": [
+      "은행인수어음",
+      "BA"
+    ]
+  },
+  {
+    "term": "을기금(Capital B)",
+    "aliases": [
+      "을기금",
+      "Capital B"
+    ]
+  },
+  {
+    "term": "의중임금",
+    "aliases": []
+  },
+  {
+    "term": "이슬람금융",
+    "aliases": []
+  },
+  {
+    "term": "이자보상배율",
+    "aliases": []
+  },
+  {
+    "term": "이전소득수지",
+    "aliases": []
+  },
+  {
+    "term": "이중통화채(dual currency bond)",
+    "aliases": [
+      "이중통화채",
+      "dual currency bond"
+    ]
+  },
+  {
+    "term": "이표채",
+    "aliases": []
+  },
+  {
+    "term": "익스포저",
+    "aliases": []
+  },
+  {
+    "term": "인구고령화",
+    "aliases": []
+  },
+  {
+    "term": "인적자본",
+    "aliases": []
+  },
+  {
+    "term": "인터넷뱅킹",
+    "aliases": []
+  },
+  {
+    "term": "인터넷전문은행",
+    "aliases": []
+  },
+  {
+    "term": "인플레이션",
+    "aliases": []
+  },
+  {
+    "term": "일물일가의 법칙",
+    "aliases": []
+  },
+  {
+    "term": "일반특혜관세",
+    "aliases": []
+  },
+  {
+    "term": "일중RP제도",
+    "aliases": []
+  },
+  {
+    "term": "일중당좌대출제도",
+    "aliases": []
+  },
+  {
+    "term": "입금이체",
+    "aliases": []
+  },
+  {
+    "term": "자금관리서비스(CMS)공동망",
+    "aliases": []
+  },
+  {
+    "term": "자금순환표",
+    "aliases": []
+  },
+  {
+    "term": "자금조달비용지수(COFIX)",
+    "aliases": [
+      "자금조달비용지수",
+      "COFIX"
+    ]
+  },
+  {
+    "term": "자기띠 카드",
+    "aliases": []
+  },
+  {
+    "term": "자기자본비율",
+    "aliases": []
+  },
+  {
+    "term": "자동안정화장치",
+    "aliases": []
+  },
+  {
+    "term": "자발적 실업",
+    "aliases": []
+  },
+  {
+    "term": "자본거래자유화",
+    "aliases": []
+  },
+  {
+    "term": "자본생산성",
+    "aliases": []
+  },
+  {
+    "term": "자본시장통합법",
+    "aliases": []
+  },
+  {
+    "term": "자본이동자유화규약",
+    "aliases": []
+  },
+  {
+    "term": "자본적정성",
+    "aliases": []
+  },
+  {
+    "term": "자본적지출",
+    "aliases": []
+  },
+  {
+    "term": "자산건전성 분류",
+    "aliases": []
+  },
+  {
+    "term": "자산유동화",
+    "aliases": []
+  },
+  {
+    "term": "자연독점",
+    "aliases": []
+  },
+  {
+    "term": "자연실업률",
+    "aliases": []
+  },
+  {
+    "term": "자유무역협정(FTA)",
+    "aliases": [
+      "자유무역협정",
+      "FTA"
+    ]
+  },
+  {
+    "term": "자유재",
+    "aliases": []
+  },
+  {
+    "term": "작업증명",
+    "aliases": []
+  },
+  {
+    "term": "잠상",
+    "aliases": []
+  },
+  {
+    "term": "잠재GDP성장률",
+    "aliases": []
+  },
+  {
+    "term": "잠재경제활동인구",
+    "aliases": []
+  },
+  {
+    "term": "장기금융시장(자본시장)",
+    "aliases": [
+      "장기금융시장",
+      "자본시장"
+    ]
+  },
+  {
+    "term": "장기침체",
+    "aliases": []
+  },
+  {
+    "term": "장내시장",
+    "aliases": []
+  },
+  {
+    "term": "장단기금리차",
+    "aliases": []
+  },
+  {
+    "term": "장외시장",
+    "aliases": []
+  },
+  {
+    "term": "재산소득",
+    "aliases": []
+  },
+  {
+    "term": "재정수지",
+    "aliases": []
+  },
+  {
+    "term": "재정정책",
+    "aliases": []
+  },
+  {
+    "term": "재정환율",
+    "aliases": []
+  },
+  {
+    "term": "저축률/총저축/평균소비성향/평균저축성향",
+    "aliases": []
+  },
+  {
+    "term": "적기시정조치제도",
+    "aliases": []
+  },
+  {
+    "term": "전방연쇄효과",
+    "aliases": []
+  },
+  {
+    "term": "전산업생산지수",
+    "aliases": []
+  },
+  {
+    "term": "전자금융",
+    "aliases": []
+  },
+  {
+    "term": "전자금융공동망",
+    "aliases": []
+  },
+  {
+    "term": "전자단기사채",
+    "aliases": []
+  },
+  {
+    "term": "전자상거래",
+    "aliases": []
+  },
+  {
+    "term": "전자서명",
+    "aliases": []
+  },
+  {
+    "term": "전자어음",
+    "aliases": []
+  },
+  {
+    "term": "전자정보교환제도",
+    "aliases": []
+  },
+  {
+    "term": "전자지급결제대행",
+    "aliases": []
+  },
+  {
+    "term": "전자화폐",
+    "aliases": []
+  },
+  {
+    "term": "전자화폐공동망",
+    "aliases": []
+  },
+  {
+    "term": "전환사채(CB)",
+    "aliases": [
+      "전환사채",
+      "CB"
+    ]
+  },
+  {
+    "term": "정규직/비정규직",
+    "aliases": []
+  },
+  {
+    "term": "정보의 비대칭성",
+    "aliases": []
+  },
+  {
+    "term": "정부당좌예금계정",
+    "aliases": []
+  },
+  {
+    "term": "정부실패",
+    "aliases": []
+  },
+  {
+    "term": "정책시차",
+    "aliases": []
+  },
+  {
+    "term": "정크본드",
+    "aliases": []
+  },
+  {
+    "term": "제1차 통화조치",
+    "aliases": []
+  },
+  {
+    "term": "제2차 통화조치",
+    "aliases": []
+  },
+  {
+    "term": "제로금리정책",
+    "aliases": []
+  },
+  {
+    "term": "제조업생산능력/가동률지수",
+    "aliases": []
+  },
+  {
+    "term": "제조업평균가동률갭",
+    "aliases": []
+  },
+  {
+    "term": "조세부담률",
+    "aliases": []
+  },
+  {
+    "term": "종합금융투자사업자",
+    "aliases": []
+  },
+  {
+    "term": "죄수의 딜레마",
+    "aliases": []
+  },
+  {
+    "term": "주가수익비율(PER)",
+    "aliases": [
+      "주가수익비율",
+      "PER"
+    ]
+  },
+  {
+    "term": "주가연계증권(ELS)",
+    "aliases": [
+      "주가연계증권",
+      "ELS"
+    ]
+  },
+  {
+    "term": "주가지수",
+    "aliases": []
+  },
+  {
+    "term": "주가지수선물거래",
+    "aliases": []
+  },
+  {
+    "term": "주가지수옵션",
+    "aliases": []
+  },
+  {
+    "term": "주당순이익(EPS)",
+    "aliases": [
+      "주당순이익",
+      "EPS"
+    ]
+  },
+  {
+    "term": "주식시장",
+    "aliases": []
+  },
+  {
+    "term": "주택저당증권(MBS)",
+    "aliases": [
+      "주택저당증권",
+      "MBS"
+    ]
+  },
+  {
+    "term": "중간소비",
+    "aliases": []
+  },
+  {
+    "term": "중개무역",
+    "aliases": []
+  },
+  {
+    "term": "중계무역",
+    "aliases": []
+  },
+  {
+    "term": "중앙거래당사자",
+    "aliases": []
+  },
+  {
+    "term": "중앙예탁기관",
+    "aliases": []
+  },
+  {
+    "term": "중앙은행",
+    "aliases": []
+  },
+  {
+    "term": "중앙은행 여수신제도",
+    "aliases": []
+  },
+  {
+    "term": "증거금",
+    "aliases": []
+  },
+  {
+    "term": "증권결제리스크",
+    "aliases": []
+  },
+  {
+    "term": "증권대금동시결제(DVP)",
+    "aliases": [
+      "증권대금동시결제",
+      "DVP"
+    ]
+  },
+  {
+    "term": "지급",
+    "aliases": []
+  },
+  {
+    "term": "지급결제 및 시장인프라 위원회(BIS CPMI)",
+    "aliases": [
+      "지급결제 및 시장인프라 위원회",
+      "BIS CPMI"
+    ]
+  },
+  {
+    "term": "지급결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "지급결제제도 감시",
+    "aliases": []
+  },
+  {
+    "term": "지급수단",
+    "aliases": []
+  },
+  {
+    "term": "지급준비자산제도",
+    "aliases": []
+  },
+  {
+    "term": "지급준비제도",
+    "aliases": []
+  },
+  {
+    "term": "지니계수",
+    "aliases": []
+  },
+  {
+    "term": "지로(GIRO)",
+    "aliases": [
+      "지로",
+      "GIRO"
+    ]
+  },
+  {
+    "term": "지방은행공동망",
+    "aliases": []
+  },
+  {
+    "term": "지수기준년",
+    "aliases": []
+  },
+  {
+    "term": "지역금융협정",
+    "aliases": []
+  },
+  {
+    "term": "지적소유권",
+    "aliases": []
+  },
+  {
+    "term": "지정시점처리제도",
+    "aliases": []
+  },
+  {
+    "term": "지주회사",
+    "aliases": []
+  },
+  {
+    "term": "직불카드",
+    "aliases": []
+  },
+  {
+    "term": "직불카드공동망",
+    "aliases": []
+  },
+  {
+    "term": "직접투자",
+    "aliases": []
+  },
+  {
+    "term": "진성어음/융통어음",
+    "aliases": []
+  },
+  {
+    "term": "집단대출",
+    "aliases": []
+  },
+  {
+    "term": "집중도 지수(HHI)",
+    "aliases": [
+      "집중도 지수",
+      "HHI"
+    ]
+  },
+  {
+    "term": "차액결제선물환(NDF) 거래",
+    "aliases": []
+  },
+  {
+    "term": "차액결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "차입매수(LBO)",
+    "aliases": [
+      "차입매수",
+      "LBO"
+    ]
+  },
+  {
+    "term": "채권시가평가",
+    "aliases": []
+  },
+  {
+    "term": "채권시장",
+    "aliases": []
+  },
+  {
+    "term": "채권시장안정펀드",
+    "aliases": []
+  },
+  {
+    "term": "채무상환유예(moratorium)",
+    "aliases": [
+      "채무상환유예",
+      "moratorium"
+    ]
+  },
+  {
+    "term": "청년실업률",
+    "aliases": []
+  },
+  {
+    "term": "청산",
+    "aliases": []
+  },
+  {
+    "term": "총고정자본형성",
+    "aliases": []
+  },
+  {
+    "term": "총부채상환비율(DTI)",
+    "aliases": [
+      "총부채상환비율",
+      "DTI"
+    ]
+  },
+  {
+    "term": "총부채원리금상환비율(DSR)",
+    "aliases": [
+      "총부채원리금상환비율",
+      "DSR"
+    ]
+  },
+  {
+    "term": "총산출",
+    "aliases": []
+  },
+  {
+    "term": "총수입스왑(Total Return Swap)",
+    "aliases": [
+      "총수입스왑",
+      "Total Return Swap"
+    ]
+  },
+  {
+    "term": "총액결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "최저임금제",
+    "aliases": []
+  },
+  {
+    "term": "최종대부자 기능",
+    "aliases": []
+  },
+  {
+    "term": "최종수요/중간수요",
+    "aliases": []
+  },
+  {
+    "term": "추가경정예산",
+    "aliases": []
+  },
+  {
+    "term": "추심",
+    "aliases": []
+  },
+  {
+    "term": "추정손실",
+    "aliases": []
+  },
+  {
+    "term": "출구전략",
+    "aliases": []
+  },
+  {
+    "term": "출금이체",
+    "aliases": []
+  },
+  {
+    "term": "출자총액제한제도",
+    "aliases": []
+  },
+  {
+    "term": "치앙마이 이니셔티브(CMI)",
+    "aliases": [
+      "치앙마이 이니셔티브",
+      "CMI"
+    ]
+  },
+  {
+    "term": "치킨게임",
+    "aliases": []
+  },
+  {
+    "term": "카르텔",
+    "aliases": []
+  },
+  {
+    "term": "캐리트레이드",
+    "aliases": []
+  },
+  {
+    "term": "커버드본드(이중상환청구권부 채권)",
+    "aliases": [
+      "커버드본드",
+      "이중상환청구권부 채권"
+    ]
+  },
+  {
+    "term": "컨트리리스크",
+    "aliases": []
+  },
+  {
+    "term": "코리보",
+    "aliases": []
+  },
+  {
+    "term": "콜시장",
+    "aliases": []
+  },
+  {
+    "term": "콜옵션",
+    "aliases": []
+  },
+  {
+    "term": "크라우드펀딩",
+    "aliases": []
+  },
+  {
+    "term": "타행환공동망",
+    "aliases": []
+  },
+  {
+    "term": "탄소배출권",
+    "aliases": []
+  },
+  {
+    "term": "테이퍼링(tapering)",
+    "aliases": [
+      "테이퍼링",
+      "tapering"
+    ]
+  },
+  {
+    "term": "테일러 준칙(Taylor's rule)",
+    "aliases": [
+      "테일러 준칙",
+      "Taylor's rule"
+    ]
+  },
+  {
+    "term": "텔레뱅킹(폰뱅킹)",
+    "aliases": [
+      "텔레뱅킹",
+      "폰뱅킹"
+    ]
+  },
+  {
+    "term": "토빈세(Tobin tax)",
+    "aliases": [
+      "토빈세",
+      "Tobin tax"
+    ]
+  },
+  {
+    "term": "통상임금",
+    "aliases": []
+  },
+  {
+    "term": "통합발행제도",
+    "aliases": []
+  },
+  {
+    "term": "통화스왑",
+    "aliases": []
+  },
+  {
+    "term": "통화승수",
+    "aliases": []
+  },
+  {
+    "term": "통화안정계정",
+    "aliases": []
+  },
+  {
+    "term": "통화안정증권",
+    "aliases": []
+  },
+  {
+    "term": "통화옵션",
+    "aliases": []
+  },
+  {
+    "term": "통화유통속도",
+    "aliases": []
+  },
+  {
+    "term": "통화전쟁",
+    "aliases": []
+  },
+  {
+    "term": "통화정책",
+    "aliases": []
+  },
+  {
+    "term": "통화정책 운영체제(monetary policy regime)",
+    "aliases": [
+      "통화정책 운영체제",
+      "monetary policy regime"
+    ]
+  },
+  {
+    "term": "통화정책 커뮤니케이션",
+    "aliases": []
+  },
+  {
+    "term": "통화정책 파급경로",
+    "aliases": []
+  },
+  {
+    "term": "통화정책수단",
+    "aliases": []
+  },
+  {
+    "term": "통화정책체계(monetary policy framework)",
+    "aliases": [
+      "통화정책체계",
+      "monetary policy framework"
+    ]
+  },
+  {
+    "term": "통화지표",
+    "aliases": []
+  },
+  {
+    "term": "투입계수",
+    "aliases": []
+  },
+  {
+    "term": "투자율",
+    "aliases": []
+  },
+  {
+    "term": "투자은행",
+    "aliases": []
+  },
+  {
+    "term": "트리핀 딜레마(Triffin's dilemma)",
+    "aliases": [
+      "트리핀 딜레마",
+      "Triffin's dilemma"
+    ]
+  },
+  {
+    "term": "특별인출권(SDR)",
+    "aliases": [
+      "특별인출권",
+      "SDR"
+    ]
+  },
+  {
+    "term": "특수목적기구(SPV)",
+    "aliases": [
+      "특수목적기구",
+      "SPV"
+    ]
+  },
+  {
+    "term": "파레토최적",
+    "aliases": []
+  },
+  {
+    "term": "파생금융상품",
+    "aliases": []
+  },
+  {
+    "term": "펀드",
+    "aliases": []
+  },
+  {
+    "term": "페더럴펀드",
+    "aliases": []
+  },
+  {
+    "term": "평가절상",
+    "aliases": []
+  },
+  {
+    "term": "평가절하",
+    "aliases": []
+  },
+  {
+    "term": "표면금리",
+    "aliases": []
+  },
+  {
+    "term": "풋옵션",
+    "aliases": []
+  },
+  {
+    "term": "프로그램매매",
+    "aliases": []
+  },
+  {
+    "term": "프로젝트 파이낸싱",
+    "aliases": []
+  },
+  {
+    "term": "피셔효과",
+    "aliases": []
+  },
+  {
+    "term": "피용자보수",
+    "aliases": []
+  },
+  {
+    "term": "핀테크",
+    "aliases": []
+  },
+  {
+    "term": "필립스곡선",
+    "aliases": []
+  },
+  {
+    "term": "한계비용",
+    "aliases": []
+  },
+  {
+    "term": "한계소비성향",
+    "aliases": []
+  },
+  {
+    "term": "한계효용",
+    "aliases": []
+  },
+  {
+    "term": "한국은행",
+    "aliases": []
+  },
+  {
+    "term": "한시적 근로자",
+    "aliases": []
+  },
+  {
+    "term": "한은금융망(BOK-Wire+)",
+    "aliases": [
+      "한은금융망",
+      "BOK-Wire+"
+    ]
+  },
+  {
+    "term": "할당관세제도",
+    "aliases": []
+  },
+  {
+    "term": "합계출산율",
+    "aliases": []
+  },
+  {
+    "term": "헤지펀드",
+    "aliases": []
+  },
+  {
+    "term": "현금자동인출기(CD)공동망",
+    "aliases": []
+  },
+  {
+    "term": "현시비교우위지수(RCA)",
+    "aliases": [
+      "현시비교우위지수",
+      "RCA"
+    ]
+  },
+  {
+    "term": "현지금융",
+    "aliases": []
+  },
+  {
+    "term": "현지법인",
+    "aliases": []
+  },
+  {
+    "term": "혼합형결제시스템",
+    "aliases": []
+  },
+  {
+    "term": "홀로그램",
+    "aliases": []
+  },
+  {
+    "term": "화폐교환",
+    "aliases": []
+  },
+  {
+    "term": "화폐발행/화폐발행액",
+    "aliases": []
+  },
+  {
+    "term": "화폐의 액면체계",
+    "aliases": []
+  },
+  {
+    "term": "화폐환수",
+    "aliases": []
+  },
+  {
+    "term": "환경계정",
+    "aliases": []
+  },
+  {
+    "term": "환경권",
+    "aliases": []
+  },
+  {
+    "term": "환리스크",
+    "aliases": []
+  },
+  {
+    "term": "환리스크헤지",
+    "aliases": []
+  },
+  {
+    "term": "환매조건부매매/RP/Repo",
+    "aliases": []
+  },
+  {
+    "term": "환어음",
+    "aliases": []
+  },
+  {
+    "term": "환율조작국",
+    "aliases": []
+  },
+  {
+    "term": "환전영업자(환전상)",
+    "aliases": [
+      "환전영업자",
+      "환전상"
+    ]
+  },
+  {
+    "term": "환차손/환차익",
+    "aliases": []
+  },
+  {
+    "term": "황금낙하산",
+    "aliases": []
+  },
+  {
+    "term": "회사채",
+    "aliases": []
+  },
+  {
+    "term": "회수의문",
+    "aliases": []
+  },
+  {
+    "term": "후방연쇄효과",
+    "aliases": []
+  },
+  {
+    "term": "후순위금융채",
+    "aliases": []
+  },
+  {
+    "term": "후행종합지수",
+    "aliases": []
+  },
+  {
+    "term": "Beyond GDP",
+    "aliases": []
+  },
+  {
+    "term": "BIS 자기자본비율",
+    "aliases": []
+  },
+  {
+    "term": "CAMEL-R시스템/ROCA시스템/CACREL시스템",
+    "aliases": []
+  },
+  {
+    "term": "CLS은행",
+    "aliases": []
+  },
+  {
+    "term": "CMO",
+    "aliases": []
+  },
+  {
+    "term": "DebtRank",
+    "aliases": []
+  },
+  {
+    "term": "EC방식",
+    "aliases": []
+  },
+  {
+    "term": "FTSE 지수",
+    "aliases": []
+  },
+  {
+    "term": "G2(Group of Two)",
+    "aliases": [
+      "G2",
+      "Group of Two"
+    ]
+  },
+  {
+    "term": "G20(Group of 20)",
+    "aliases": [
+      "G20",
+      "Group of 20"
+    ]
+  },
+  {
+    "term": "G7(Group of Seven)",
+    "aliases": [
+      "G7",
+      "Group of Seven"
+    ]
+  },
+  {
+    "term": "GDP갭",
+    "aliases": []
+  },
+  {
+    "term": "GDP디플레이터",
+    "aliases": []
+  },
+  {
+    "term": "Herstatt 리스크",
+    "aliases": []
+  },
+  {
+    "term": "IC카드",
+    "aliases": []
+  },
+  {
+    "term": "IMF 스탠드바이협약",
+    "aliases": []
+  },
+  {
+    "term": "IMF 쿼타",
+    "aliases": []
+  },
+  {
+    "term": "IMF 포지션",
+    "aliases": []
+  },
+  {
+    "term": "J커브효과",
+    "aliases": []
+  },
+  {
+    "term": "KIKO",
+    "aliases": []
+  },
+  {
+    "term": "LIBOR",
+    "aliases": []
+  },
+  {
+    "term": "M&A",
+    "aliases": []
+  },
+  {
+    "term": "MSCI 지수",
+    "aliases": []
+  },
+  {
+    "term": "N-B SRS",
+    "aliases": []
+  },
+  {
+    "term": "P2P대출",
+    "aliases": []
+  },
+  {
+    "term": "PF-ABCP",
+    "aliases": []
+  },
+  {
+    "term": "SWIFT",
+    "aliases": []
+  },
+  {
+    "term": "TED 스프레드",
+    "aliases": []
+  },
+  {
+    "term": "Treasury Bill(T/B)",
+    "aliases": [
+      "Treasury Bill",
+      "T",
+      "B"
+    ]
+  },
+  {
+    "term": "VAN사업자",
+    "aliases": []
+  },
+  {
+    "term": "VaR(Value at Risk)",
+    "aliases": [
+      "VaR",
+      "Value at Risk"
+    ]
+  },
+  {
+    "term": "VIX",
+    "aliases": []
+  }
+]
