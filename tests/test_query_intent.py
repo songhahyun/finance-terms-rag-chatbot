@@ -151,6 +151,22 @@ def test_rule_classifier_routes_finance_term_to_rag(tmp_path: Path) -> None:
     assert result.matched_terms == ["가산금리"]
 
 
+def test_rule_classifier_uses_intent_dictionary_for_rag_routing(tmp_path: Path) -> None:
+    intent_path = tmp_path / "finance_intent_terms.json"
+    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
+    intent_path.write_text('[{"term":"가산금리","aliases":["가산 금리"]}]', encoding="utf-8")
+    kiwi_path.write_text("차이\tNNG\n가산금리\tNNP\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(
+        intent_dictionary_path=intent_path,
+        kiwi_dictionary_path=kiwi_path,
+    )
+
+    result = classifier.classify("그거 차이가 뭐야?")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.matched_terms == []
+
+
 def test_rule_classifier_routes_current_finance_query_to_web(tmp_path: Path) -> None:
     path = tmp_path / "kiwi_user_dict.tsv"
     path.write_text("기준금리\tNNP\n", encoding="utf-8")

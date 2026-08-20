@@ -41,6 +41,26 @@ class _FakePipeline:
         }
 
 
+class _FakeRuleBasedQueryClassifier:
+    calls: list[dict[str, Path]] = []
+
+    def __init__(self, *, intent_dictionary_path: Path, kiwi_dictionary_path: Path) -> None:
+        self.calls.append(
+            {
+                "intent_dictionary_path": intent_dictionary_path,
+                "kiwi_dictionary_path": kiwi_dictionary_path,
+            }
+        )
+
+    def classify(self, query: str) -> QueryIntentResult:
+        return QueryIntentResult(
+            intent=QueryIntent.CLARIFY,
+            confidence=1.0,
+            reason="rule_no_match",
+            classifier_method=ClassifierMethod.RULE,
+        )
+
+
 class _ServiceWithFakePipeline(RAGService):
     def __init__(self, *, intent_classifier, monitor: PipelineMonitor | None = None) -> None:
         super().__init__(intent_classifier=intent_classifier, monitor=monitor or PipelineMonitor(log_path=None))
@@ -50,6 +70,20 @@ class _ServiceWithFakePipeline(RAGService):
     def _build_pipeline(self, mode: str, k: int):
         self.pipeline_builds += 1
         return self.pipeline
+
+
+def test_service_builds_rule_classifier_with_separate_dictionary_paths(monkeypatch) -> None:
+    _FakeRuleBasedQueryClassifier.calls = []
+    monkeypatch.setattr(rag_service, "RuleBasedQueryClassifier", _FakeRuleBasedQueryClassifier)
+    service = RAGService(monitor=PipelineMonitor(log_path=None))
+
+    assert service is not None
+    assert _FakeRuleBasedQueryClassifier.calls == [
+        {
+            "intent_dictionary_path": service._settings.processed_data_dir / "finance_intent_terms.json",
+            "kiwi_dictionary_path": service._settings.processed_data_dir / "kiwi_user_dict.tsv",
+        }
+    ]
 
 
 def test_service_non_rag_route_does_not_build_pipeline() -> None:
