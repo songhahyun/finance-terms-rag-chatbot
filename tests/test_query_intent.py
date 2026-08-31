@@ -293,6 +293,60 @@ def test_rule_classifier_json_alias_matches_to_canonical_terms(tmp_path: Path) -
     assert result.matched_terms == ["경기동향지수(경기확산지수)"]
 
 
+@pytest.mark.parametrize(
+    ("query", "expected_term"),
+    [
+        ("ETF가 뭐야?", "상장지수펀드(ETF)"),
+        ("FSB란?", "금융안정위원회(FSB)"),
+        ("LTV 계산 방식", "담보인정비율(LTV)"),
+        ("RP 매매", "환매조건부매매/RP/Repo"),
+    ],
+)
+def test_rule_classifier_matches_short_english_aliases_as_tokens(
+    tmp_path: Path,
+    query: str,
+    expected_term: str,
+) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(
+        path,
+        [
+            {"term": "상장지수펀드(ETF)", "aliases": ["ETF"]},
+            {"term": "금융안정위원회(FSB)", "aliases": ["금융안정위원회", "FSB"]},
+            {"term": "담보인정비율(LTV)", "aliases": ["담보인정비율", "LTV"]},
+            {"term": "환매조건부매매/RP/Repo", "aliases": ["RP", "Repo"]},
+        ],
+    )
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify(query)
+
+    assert result.intent == QueryIntent.NEEDS_RAG
+    assert result.matched_terms == [expected_term]
+
+
+@pytest.mark.parametrize("query", ["SCPI 지수", "etfportfolio", "myCDaccount", "xrpwallet"])
+def test_rule_classifier_does_not_match_short_english_aliases_inside_words(
+    tmp_path: Path,
+    query: str,
+) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(
+        path,
+        [
+            {"term": "기업어음(CP)", "aliases": ["기업어음", "CP"]},
+            {"term": "상장지수펀드(ETF)", "aliases": ["ETF"]},
+            {"term": "양도성예금증서(CD)", "aliases": ["양도성예금증서", "CD"]},
+            {"term": "환매조건부매매/RP/Repo", "aliases": ["RP", "Repo"]},
+        ],
+    )
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify(query)
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.matched_terms == []
+
 def test_rule_classifier_programming_query_has_no_finance_false_positive(tmp_path: Path) -> None:
     path = tmp_path / "finance_intent_terms.json"
     _write_intent_dictionary(path, [{"term": "가산금리", "aliases": []}])
@@ -493,5 +547,4 @@ def test_final_classifier_caches_repeated_queries() -> None:
 
     assert first is second
     assert rule.calls == 1
-
 

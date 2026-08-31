@@ -88,13 +88,38 @@ class RuleBasedQueryClassifier:
         matches: list[str] = []
         seen: set[str] = set()
         for normalized_term, terms in self.dictionary.normalized_to_terms.items():
-            if normalized_term not in normalized_query:
+            if self._requires_ascii_boundary(normalized_term):
+                if not self._contains_with_ascii_boundary(normalized_query, normalized_term):
+                    continue
+            elif normalized_term not in normalized_query:
                 continue
             for term in terms:
                 if term not in seen:
                     seen.add(term)
                     matches.append(term)
         return matches
+
+    @staticmethod
+    def _requires_ascii_boundary(normalized_term: str) -> bool:
+        """Return whether a normalized term needs ASCII neighbor checks."""
+
+        return len(normalized_term) <= 3 and normalized_term.isascii() and normalized_term.isalnum()
+
+    @staticmethod
+    def _contains_with_ascii_boundary(normalized_query: str, normalized_term: str) -> bool:
+        """Find a short ASCII term only when adjacent chars are not ASCII alnum."""
+
+        start = normalized_query.find(normalized_term)
+        while start != -1:
+            end = start + len(normalized_term)
+            left = normalized_query[start - 1] if start > 0 else ""
+            right = normalized_query[end] if end < len(normalized_query) else ""
+            left_ok = not left or not (left.isascii() and left.isalnum())
+            right_ok = not right or not (right.isascii() and right.isalnum())
+            if left_ok and right_ok:
+                return True
+            start = normalized_query.find(normalized_term, start + 1)
+        return False
 
     def _filter_longest_finance_term_matches(self, matches: list[str]) -> list[str]:
         """Drop shorter finance terms contained in longer matched terms."""
