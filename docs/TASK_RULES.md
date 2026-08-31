@@ -116,12 +116,45 @@ docs/tasks/TASK_001_ADD_QUERY_CLASSIFIER.md
 ```
 
 - If the task file contains multiple subtasks, summarize the overall goal and list the subtasks in the issue body.
+- Create the issue using a structured Markdown body. Do not create a flat one-line paragraph that combines goal, subtasks, and constraints.
+- The issue title should be a concise task heading.
+- The issue body should start with a Markdown heading that matches or closely mirrors the issue title.
+- Use short prose paragraphs and bullet lists for the body.
+- Include these sections when the task file contains the relevant information:
+  - `## Goal`
+  - `## Subtasks`
+  - `## Constraints`
+  - `## Acceptance Criteria` or `## Verification`
+- Keep each bullet focused on one requirement or subtask.
+- Preserve file paths, task numbers, and command names in backticks.
 - Use GitHub CLI to create the issue when available.
 
 Example:
 
 ```powershell
-gh issue create --title "Task 001: ADD_QUERY_CLASSIFIER" --body "<task summary and subtask list>"
+gh issue create --title "Task 001: Add Query Classifier" --body @"
+# Task 001: Add Query Classifier
+
+## Goal
+
+Add query intent classification so chat requests can be routed to fixed answers, RAG, or web fallback behavior.
+
+## Subtasks
+
+- Task 001-1: Add the dictionary loader and normalizer.
+- Task 001-2: Add the Kiwi-based rule classifier.
+- Task 001-3: Add the LLM fallback classifier.
+
+## Constraints
+
+- Preserve existing public API response compatibility.
+- Keep task-related changes scoped to the files listed in the task document.
+
+## Verification
+
+- Run the targeted query intent tests.
+- Report any skipped validation and the reason.
+"@
 ```
 
 - After creating the issue, capture the created issue number.
@@ -142,6 +175,7 @@ NEED_USER_CONFIRMATION: Failed to create a GitHub Issue for this task. Should I 
 - If an issue number was created before implementation, reference that issue in the commit message.
 - If an issue number is already specified in the task prompt or task file, use that issue instead of creating a duplicate issue.
 - If GitHub CLI is available, inspect the issue before implementing the task.
+- When inspecting a newly created issue, verify that the issue body uses readable Markdown sections instead of a single flat paragraph.
 
 Example:
 

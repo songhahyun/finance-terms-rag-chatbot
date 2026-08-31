@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import src.query_intent as intent_package
 from src.generation.query_intent import (
     CAPABILITY_ANSWER,
@@ -69,6 +71,58 @@ def test_finance_dictionary_loads_terms_once_from_path(tmp_path: Path) -> None:
     assert dictionary.normalized_to_terms["etf"] == ("ETF",)
 
 
+def test_finance_dictionary_loads_json_canonical_terms(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text(
+        '[{"term":"가산금리","aliases":[]},{"term":"상장지수펀드(ETF)","aliases":["ETF"]}]',
+        encoding="utf-8",
+    )
+
+    dictionary = FinanceTermDictionary.load(path)
+
+    assert dictionary.terms == ("가산금리", "상장지수펀드(ETF)")
+    assert dictionary.normalized_to_terms["가산금리"] == ("가산금리",)
+    assert dictionary.normalized_to_terms["etf"] == ("상장지수펀드(ETF)",)
+
+
+def test_finance_dictionary_json_alias_matches_return_canonical_terms(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text(
+        '[{"term":"상장지수펀드(ETF)","aliases":["ETF","상장지수펀드"]}]',
+        encoding="utf-8",
+    )
+    dictionary = FinanceTermDictionary.load(path)
+
+    assert dictionary.find_matches("ETF 뜻 알려줘") == ["상장지수펀드(ETF)"]
+    assert dictionary.find_token_matches(["상장지수펀드"]) == ["상장지수펀드(ETF)"]
+
+
+def test_finance_dictionary_json_deduplicates_terms_and_aliases(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text(
+        (
+            "["
+            '{"term":"상장지수펀드(ETF)","aliases":["ETF","ETF","상장지수펀드"]},'
+            '{"term":"상장지수펀드(ETF)","aliases":["ignored"]}'
+            "]"
+        ),
+        encoding="utf-8",
+    )
+
+    dictionary = FinanceTermDictionary.load(path)
+
+    assert dictionary.terms == ("상장지수펀드(ETF)",)
+    assert dictionary.find_matches("ETF와 상장지수펀드 차이") == ["상장지수펀드(ETF)"]
+
+
+def test_finance_dictionary_json_rejects_invalid_records(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text('[{"term":"가산금리","aliases":"가산 금리"}]', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="aliases must be a list"):
+        FinanceTermDictionary.load(path)
+
+
 def test_finance_dictionary_matches_spacing_insensitive_korean_term(tmp_path: Path) -> None:
     path = tmp_path / "kiwi_user_dict.tsv"
     path.write_text("가산금리\tNNP\n", encoding="utf-8")
@@ -97,6 +151,53 @@ def test_rule_classifier_routes_finance_term_to_rag(tmp_path: Path) -> None:
     assert result.matched_terms == ["가산금리"]
 
 
+def test_rule_classifier_uses_intent_dictionary_for_rag_routing(tmp_path: Path) -> None:
+    intent_path = tmp_path / "finance_intent_terms.json"
+    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
+    intent_path.write_text('[{"term":"가산금리","aliases":["가산 금리"]}]', encoding="utf-8")
+    kiwi_path.write_text("차이\tNNG\n가산금리\tNNP\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(
+        intent_dictionary_path=intent_path,
+        kiwi_dictionary_path=kiwi_path,
+    )
+
+    result = classifier.classify("그거 차이가 뭐야?")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.matched_terms == []
+
+
+@pytest.mark.parametrize(
+    ("generic_term", "query"),
+    [
+        ("차이", "그거 차이가 뭐야?"),
+        ("용어", "이 용어가 무슨 뜻이야?"),
+        ("설명", "그냥 설명만 해줘"),
+        ("일반", "일반적인 뜻 알려줘"),
+        ("효과", "그 효과가 뭐야?"),
+        ("금융", "이 챗봇은 금융 용어만 설명해?"),
+    ],
+)
+def test_rule_classifier_kiwi_only_generic_terms_do_not_route_to_rag(
+    tmp_path: Path,
+    generic_term: str,
+    query: str,
+) -> None:
+    intent_path = tmp_path / "finance_intent_terms.json"
+    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
+    intent_path.write_text('[{"term":"가산금리","aliases":[]}]', encoding="utf-8")
+    kiwi_path.write_text(f"{generic_term}\tNNG\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(
+        intent_dictionary_path=intent_path,
+        kiwi_dictionary_path=kiwi_path,
+    )
+
+    result = classifier.classify(query)
+
+    assert result.intent != QueryIntent.NEEDS_RAG
+    assert result.matched_terms == []
+
+
 def test_rule_classifier_routes_current_finance_query_to_web(tmp_path: Path) -> None:
     path = tmp_path / "kiwi_user_dict.tsv"
     path.write_text("기준금리\tNNP\n", encoding="utf-8")
@@ -108,6 +209,22 @@ def test_rule_classifier_routes_current_finance_query_to_web(tmp_path: Path) -> 
     assert result.reason == "matched_current_information_signal"
     assert result.matched_terms == ["기준금리"]
     assert result.fixed_answer is not None
+
+
+def test_rule_classifier_routes_current_finance_query_with_json_canonical_term(tmp_path: Path) -> None:
+    intent_path = tmp_path / "finance_intent_terms.json"
+    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
+    intent_path.write_text('[{"term":"기준금리","aliases":["기준 금리"]}]', encoding="utf-8")
+    kiwi_path.write_text("금리\tNNG\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(
+        intent_dictionary_path=intent_path,
+        kiwi_dictionary_path=kiwi_path,
+    )
+
+    result = classifier.classify("기준 금리 오늘 얼마야?")
+
+    assert result.intent == QueryIntent.NEEDS_WEB
+    assert result.matched_terms == ["기준금리"]
 
 
 def test_rule_classifier_routes_greeting_to_simple(tmp_path: Path) -> None:
@@ -157,6 +274,25 @@ def test_rule_classifier_filters_longest_finance_term_matches(tmp_path: Path) ->
 
     assert result.intent == QueryIntent.NEEDS_RAG
     assert set(result.matched_terms) == {"스태그플레이션", "인플레이션"}
+
+
+def test_rule_classifier_filters_longest_json_alias_matches_to_canonical_terms(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    path.write_text(
+        (
+            "["
+            '{"term":"인플레이션","aliases":["인플"]},'
+            '{"term":"스태그플레이션","aliases":["스태그"]}'
+            "]"
+        ),
+        encoding="utf-8",
+    )
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("인플과 스태그플레이션의 차이점은 무엇인가요?")
+
+    assert result.intent == QueryIntent.NEEDS_RAG
+    assert set(result.matched_terms) == {"인플레이션", "스태그플레이션"}
 
 
 def test_rule_classifier_programming_query_has_no_finance_false_positive(tmp_path: Path) -> None:

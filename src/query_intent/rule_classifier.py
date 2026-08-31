@@ -29,14 +29,18 @@ from src.query_intent.types import ClassifierMethod, QueryIntent, QueryIntentRes
 class RuleBasedQueryClassifier:
     """Classify queries with deterministic finance-term and pattern matching."""
 
-    def __init__(self, dictionary_path: str | Path) -> None:
+    def __init__(self, intent_dictionary_path: str | Path, kiwi_dictionary_path: str | Path | None = None) -> None:
         """Initialize dictionary lookup and the Kiwi tokenizer user dictionary."""
 
-        self.dictionary = FinanceTermDictionary.load(dictionary_path)
-        self._kiwi = self._build_kiwi(dictionary_path)
+        intent_path = Path(intent_dictionary_path)
+        tokenizer_dictionary_path = kiwi_dictionary_path
+        if tokenizer_dictionary_path is None and intent_path.suffix.casefold() != ".json":
+            tokenizer_dictionary_path = intent_path
+        self.dictionary = FinanceTermDictionary.load(intent_dictionary_path)
+        self._kiwi = self._build_kiwi(tokenizer_dictionary_path)
 
     @staticmethod
-    def _build_kiwi(dictionary_path: str | Path) -> Any:
+    def _build_kiwi(dictionary_path: str | Path | None) -> Any:
         """Build a Kiwi tokenizer and load the finance user dictionary if supported."""
 
         try:
@@ -46,7 +50,7 @@ class RuleBasedQueryClassifier:
 
         kiwi = Kiwi()
         load_user_dictionary = getattr(kiwi, "load_user_dictionary", None)
-        if callable(load_user_dictionary):
+        if dictionary_path is not None and callable(load_user_dictionary):
             load_user_dictionary(str(dictionary_path))
         return kiwi
 
