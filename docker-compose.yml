@@ -1,5 +1,6 @@
 services:
   backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/songhahyun/finance-terms-rag-chatbot/backend}:${BACKEND_TAG:-dev}
     build:
       context: .
       dockerfile: Dockerfile.backend

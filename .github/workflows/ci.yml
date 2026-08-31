@@ -5,10 +5,17 @@ on:
     branches:
       - dev
       - main
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
   push:
     branches:
       - dev
       - main
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 env:
   BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
@@ -94,11 +101,23 @@ jobs:
         run: |
           docker run --rm backend-ci:${{ github.sha }} sh -c "test -f /app/data/processed/bm25_index.pkl"
           docker run --rm backend-ci:${{ github.sha }} sh -c "test -f /app/data/processed/final_chunk.json"
+          docker run --rm backend-ci:${{ github.sha }} sh -c "test -f /app/data/processed/finance_intent_terms.json"
           docker run --rm backend-ci:${{ github.sha }} sh -c "test -f /app/data/processed/kiwi_user_dict.tsv"
 
       - name: Verify backend image excludes local/evaluation packages
         run: |
           test -z "$(docker run --rm backend-ci:${{ github.sha }} sh -c "pip list --format=freeze | grep -E '^(sentence-transformers|langchain-huggingface|ragas|bert-score|datasets|streamlit|weave)==' || true")"
+
+      - name: Read release version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: version
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "VERSION must use SemVer format like 1.2.3; got '$VERSION'" >&2
+            exit 1
+          fi
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
         if: github.event_name == 'push'
@@ -108,13 +127,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish backend image to GHCR
-        if: github.event_name == 'push'
+      - name: Publish dev backend image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile.backend
           push: true
           tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:dev
+            ${{ env.BACKEND_IMAGE }}:dev-${{ github.sha }}
+
+      - name: Publish release backend image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.backend
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ env.BACKEND_IMAGE }}:latest
