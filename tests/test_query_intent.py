@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -37,6 +38,11 @@ def test_query_intent_facade_exports_same_objects_as_intent_package() -> None:
     assert UNSUPPORTED_DOMAIN_ANSWER is intent_package.UNSUPPORTED_DOMAIN_ANSWER
     assert normalize_term is intent_package.normalize_term
 
+
+def _write_intent_dictionary(path: Path, records: list[dict[str, object]]) -> None:
+    """Write a JSON finance intent dictionary for classifier tests."""
+
+    path.write_text(json.dumps(records, ensure_ascii=False), encoding="utf-8")
 
 def test_query_intent_result_metadata() -> None:
     result = QueryIntentResult(
@@ -145,8 +151,8 @@ def test_finance_dictionary_matches_abbreviation(tmp_path: Path) -> None:
 
 
 def test_rule_classifier_routes_finance_term_to_rag(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("가산금리\tNNP\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "가산금리", "aliases": []}])
     classifier = RuleBasedQueryClassifier(path)
 
     result = classifier.classify("가산금리란 무엇인가요?")
@@ -158,13 +164,8 @@ def test_rule_classifier_routes_finance_term_to_rag(tmp_path: Path) -> None:
 
 def test_rule_classifier_uses_intent_dictionary_for_rag_routing(tmp_path: Path) -> None:
     intent_path = tmp_path / "finance_intent_terms.json"
-    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
-    intent_path.write_text('[{"term":"가산금리","aliases":["가산 금리"]}]', encoding="utf-8")
-    kiwi_path.write_text("차이\tNNG\n가산금리\tNNP\n", encoding="utf-8")
-    classifier = RuleBasedQueryClassifier(
-        intent_dictionary_path=intent_path,
-        kiwi_dictionary_path=kiwi_path,
-    )
+    _write_intent_dictionary(intent_path, [{"term": "가산금리", "aliases": ["가산 금리"]}])
+    classifier = RuleBasedQueryClassifier(intent_dictionary_path=intent_path)
 
     result = classifier.classify("그거 차이가 뭐야?")
 
@@ -189,13 +190,8 @@ def test_rule_classifier_kiwi_only_generic_terms_do_not_route_to_rag(
     query: str,
 ) -> None:
     intent_path = tmp_path / "finance_intent_terms.json"
-    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
-    intent_path.write_text('[{"term":"가산금리","aliases":[]}]', encoding="utf-8")
-    kiwi_path.write_text(f"{generic_term}\tNNG\n", encoding="utf-8")
-    classifier = RuleBasedQueryClassifier(
-        intent_dictionary_path=intent_path,
-        kiwi_dictionary_path=kiwi_path,
-    )
+    _write_intent_dictionary(intent_path, [{"term": "가산금리", "aliases": []}])
+    classifier = RuleBasedQueryClassifier(intent_dictionary_path=intent_path)
 
     result = classifier.classify(query)
 
@@ -203,9 +199,19 @@ def test_rule_classifier_kiwi_only_generic_terms_do_not_route_to_rag(
     assert result.matched_terms == []
 
 
+def test_rule_classifier_rejects_kiwi_dictionary_argument(tmp_path: Path) -> None:
+    intent_path = tmp_path / "finance_intent_terms.json"
+    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
+    _write_intent_dictionary(intent_path, [{"term": "가산금리", "aliases": []}])
+    kiwi_path.write_text("가산금리\tNNP\n", encoding="utf-8")
+
+    with pytest.raises(TypeError):
+        RuleBasedQueryClassifier(intent_dictionary_path=intent_path, kiwi_dictionary_path=kiwi_path)
+
+
 def test_rule_classifier_routes_current_finance_query_to_web(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "기준금리", "aliases": []}])
     classifier = RuleBasedQueryClassifier(path)
 
     result = classifier.classify("기준금리 오늘 얼마야?")
@@ -218,13 +224,8 @@ def test_rule_classifier_routes_current_finance_query_to_web(tmp_path: Path) -> 
 
 def test_rule_classifier_routes_current_finance_query_with_json_canonical_term(tmp_path: Path) -> None:
     intent_path = tmp_path / "finance_intent_terms.json"
-    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
-    intent_path.write_text('[{"term":"기준금리","aliases":["기준 금리"]}]', encoding="utf-8")
-    kiwi_path.write_text("금리\tNNG\n", encoding="utf-8")
-    classifier = RuleBasedQueryClassifier(
-        intent_dictionary_path=intent_path,
-        kiwi_dictionary_path=kiwi_path,
-    )
+    _write_intent_dictionary(intent_path, [{"term": "기준금리", "aliases": ["기준 금리"]}])
+    classifier = RuleBasedQueryClassifier(intent_dictionary_path=intent_path)
 
     result = classifier.classify("기준 금리 오늘 얼마야?")
 
@@ -233,8 +234,8 @@ def test_rule_classifier_routes_current_finance_query_with_json_canonical_term(t
 
 
 def test_rule_classifier_routes_greeting_to_simple(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("가산금리\tNNP\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "가산금리", "aliases": []}])
     classifier = RuleBasedQueryClassifier(path)
 
     result = classifier.classify("안녕?")
@@ -245,8 +246,8 @@ def test_rule_classifier_routes_greeting_to_simple(tmp_path: Path) -> None:
 
 
 def test_rule_classifier_routes_unsupported_domain_to_simple_fixed_answer(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("가산금리\tNNP\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "가산금리", "aliases": []}])
     classifier = RuleBasedQueryClassifier(path)
 
     result = classifier.classify("파이썬 리스트 컴프리헨션 알려줘")
@@ -257,21 +258,13 @@ def test_rule_classifier_routes_unsupported_domain_to_simple_fixed_answer(tmp_pa
 
 
 def test_rule_classifier_filters_longest_finance_term_matches(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text(
-        "\n".join(
-            [
-                "레이션\tNNG",
-                "스태\tNNG",
-                "스태그플레이션\tNNG",
-                "인플\tNNG",
-                "인플레\tNNG",
-                "인플레이션\tNNG",
-                "차이\tNNG",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(
+        path,
+        [
+            {"term": "인플레이션", "aliases": []},
+            {"term": "스태그플레이션", "aliases": []},
+        ],
     )
     classifier = RuleBasedQueryClassifier(path)
 
@@ -281,28 +274,28 @@ def test_rule_classifier_filters_longest_finance_term_matches(tmp_path: Path) ->
     assert set(result.matched_terms) == {"스태그플레이션", "인플레이션"}
 
 
-def test_rule_classifier_filters_longest_json_alias_matches_to_canonical_terms(tmp_path: Path) -> None:
+def test_rule_classifier_json_alias_matches_to_canonical_terms(tmp_path: Path) -> None:
     path = tmp_path / "finance_intent_terms.json"
-    path.write_text(
-        (
-            "["
-            '{"term":"인플레이션","aliases":["인플"]},'
-            '{"term":"스태그플레이션","aliases":["스태그"]}'
-            "]"
-        ),
-        encoding="utf-8",
+    _write_intent_dictionary(
+        path,
+        [
+            {
+                "term": "경기동향지수(경기확산지수)",
+                "aliases": ["경기동향지수", "경기확산지수"],
+            }
+        ],
     )
     classifier = RuleBasedQueryClassifier(path)
 
-    result = classifier.classify("인플과 스태그플레이션의 차이점은 무엇인가요?")
+    result = classifier.classify("경기확산지수 설명해줘")
 
     assert result.intent == QueryIntent.NEEDS_RAG
-    assert set(result.matched_terms) == {"인플레이션", "스태그플레이션"}
+    assert result.matched_terms == ["경기동향지수(경기확산지수)"]
 
 
 def test_rule_classifier_programming_query_has_no_finance_false_positive(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("리스\tNNG\n리스트\tNNG\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "가산금리", "aliases": []}])
     classifier = RuleBasedQueryClassifier(path)
 
     result = classifier.classify("파이썬 리스트 컴프리헨션 알려줘")
@@ -313,8 +306,14 @@ def test_rule_classifier_programming_query_has_no_finance_false_positive(tmp_pat
 
 
 def test_rule_classifier_conceptual_market_word_query_uses_rag(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("금리\tNNG\n주가\tNNG\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(
+        path,
+        [
+            {"term": "금리", "aliases": []},
+            {"term": "주가", "aliases": []},
+        ],
+    )
     classifier = RuleBasedQueryClassifier(path)
 
     result = classifier.classify("금리와 주가의 관계는?")
@@ -432,8 +431,8 @@ class _FakeRuleClassifier:
 
 
 def test_final_classifier_keeps_rule_rag_result_and_skips_llm(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "기준금리", "aliases": []}])
     llm = _FakeLLMClassifier(
         QueryIntentResult(intent=QueryIntent.CLARIFY, confidence=1.0, reason="unused")
     )
@@ -447,8 +446,8 @@ def test_final_classifier_keeps_rule_rag_result_and_skips_llm(tmp_path: Path) ->
 
 
 def test_final_classifier_prioritizes_web_over_finance_term(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "기준금리", "aliases": []}])
     classifier = QueryIntentClassifier(rule_classifier=RuleBasedQueryClassifier(path))
 
     result = classifier.classify("기준금리 오늘 얼마야?")
@@ -458,8 +457,8 @@ def test_final_classifier_prioritizes_web_over_finance_term(tmp_path: Path) -> N
 
 
 def test_final_classifier_uses_llm_for_rule_no_match(tmp_path: Path) -> None:
-    path = tmp_path / "kiwi_user_dict.tsv"
-    path.write_text("기준금리\tNNP\n", encoding="utf-8")
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "기준금리", "aliases": []}])
     llm = _FakeLLMClassifier(
         QueryIntentResult(
             intent=QueryIntent.CLARIFY,
@@ -494,4 +493,5 @@ def test_final_classifier_caches_repeated_queries() -> None:
 
     assert first is second
     assert rule.calls == 1
+
 

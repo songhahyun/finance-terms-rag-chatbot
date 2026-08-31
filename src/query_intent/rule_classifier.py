@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from src.query_intent.constants import (
     CAPABILITY_ANSWER,
@@ -17,7 +16,7 @@ from src.query_intent.constants import (
     _UNSUPPORTED_PATTERNS,
 )
 from src.query_intent.dictionary import FinanceTermDictionary
-from src.query_intent.normalization import _allows_short_substring_match, normalize_term
+from src.query_intent.normalization import normalize_term
 from src.query_intent.types import ClassifierMethod, QueryIntent, QueryIntentResult
 
 
@@ -29,30 +28,13 @@ from src.query_intent.types import ClassifierMethod, QueryIntent, QueryIntentRes
 class RuleBasedQueryClassifier:
     """Classify queries with deterministic finance-term and pattern matching."""
 
-    def __init__(self, intent_dictionary_path: str | Path, kiwi_dictionary_path: str | Path | None = None) -> None:
-        """Initialize dictionary lookup and the Kiwi tokenizer user dictionary."""
+    def __init__(self, intent_dictionary_path: str | Path) -> None:
+        """Initialize lookup from the strict finance intent dictionary."""
 
         intent_path = Path(intent_dictionary_path)
-        tokenizer_dictionary_path = kiwi_dictionary_path
-        if tokenizer_dictionary_path is None and intent_path.suffix.casefold() != ".json":
-            tokenizer_dictionary_path = intent_path
-        self.dictionary = FinanceTermDictionary.load(intent_dictionary_path)
-        self._kiwi = self._build_kiwi(tokenizer_dictionary_path)
-
-    @staticmethod
-    def _build_kiwi(dictionary_path: str | Path | None) -> Any:
-        """Build a Kiwi tokenizer and load the finance user dictionary if supported."""
-
-        try:
-            from kiwipiepy import Kiwi  # noqa: PLC0415
-        except ImportError as exc:
-            raise RuntimeError("kiwipiepy is required for rule-based query classification.") from exc
-
-        kiwi = Kiwi()
-        load_user_dictionary = getattr(kiwi, "load_user_dictionary", None)
-        if dictionary_path is not None and callable(load_user_dictionary):
-            load_user_dictionary(str(dictionary_path))
-        return kiwi
+        if intent_path.suffix.casefold() != ".json":
+            raise ValueError("RuleBasedQueryClassifier requires a JSON intent dictionary.")
+        self.dictionary = FinanceTermDictionary.load(intent_path)
 
     def classify(self, query: str) -> QueryIntentResult:
         """Classify a query using current-info patterns, finance terms, and simple rules."""
@@ -92,11 +74,9 @@ class RuleBasedQueryClassifier:
         )
 
     def _match_finance_terms(self, query: str) -> list[str]:
-        """Return unique finance terms matched by substring or tokenizer output."""
+        """Return unique finance terms matched by normalized dictionary lookup."""
 
-        substring_matches = self._match_finance_terms_by_substring(query)
-        token_matches = self._match_finance_terms_by_tokens(query)
-        return self._merge_finance_term_matches(substring_matches, token_matches)
+        return self._filter_longest_finance_term_matches(self._match_finance_terms_by_substring(query))
 
     def _match_finance_terms_by_substring(self, query: str) -> list[str]:
         """Find finance terms using normalized substring matching with short-term guards."""
@@ -108,8 +88,6 @@ class RuleBasedQueryClassifier:
         matches: list[str] = []
         seen: set[str] = set()
         for normalized_term, terms in self.dictionary.normalized_to_terms.items():
-            if len(normalized_term) < 3 and not _allows_short_substring_match(normalized_term):
-                continue
             if normalized_term not in normalized_query:
                 continue
             for term in terms:
@@ -118,24 +96,8 @@ class RuleBasedQueryClassifier:
                     matches.append(term)
         return matches
 
-    def _match_finance_terms_by_tokens(self, query: str) -> list[str]:
-        """Find finance terms by exact normalized match against Kiwi token forms."""
-
-        return self.dictionary.find_token_matches(self._token_forms(query))
-
-    def _merge_finance_term_matches(
-        self,
-        substring_matches: list[str],
-        token_matches: list[str],
-    ) -> list[str]:
-        """Merge finance-term matches and drop shorter terms contained in longer terms."""
-
-        matches: list[str] = []
-        seen: set[str] = set()
-        for term in [*substring_matches, *token_matches]:
-            if term not in seen:
-                seen.add(term)
-                matches.append(term)
+    def _filter_longest_finance_term_matches(self, matches: list[str]) -> list[str]:
+        """Drop shorter finance terms contained in longer matched terms."""
 
         normalized_matches = [(term, normalize_term(term)) for term in matches]
         filtered: list[str] = []
@@ -149,14 +111,6 @@ class RuleBasedQueryClassifier:
                 continue
             filtered.append(term)
         return filtered
-
-    def _token_forms(self, query: str) -> list[str]:
-        """Tokenize a query with Kiwi and return token surface forms."""
-
-        try:
-            return [token.form for token in self._kiwi.tokenize(query)]
-        except Exception:  # noqa: BLE001
-            return []
 
     @staticmethod
     def _has_current_info_signal(normalized_query: str) -> bool:
@@ -200,3 +154,4 @@ class RuleBasedQueryClassifier:
                 fixed_answer=UNSUPPORTED_DOMAIN_ANSWER,
             )
         return None
+

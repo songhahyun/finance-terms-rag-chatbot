@@ -44,11 +44,10 @@ class _FakePipeline:
 class _FakeRuleBasedQueryClassifier:
     calls: list[dict[str, Path]] = []
 
-    def __init__(self, *, intent_dictionary_path: Path, kiwi_dictionary_path: Path) -> None:
+    def __init__(self, *, intent_dictionary_path: Path) -> None:
         self.calls.append(
             {
                 "intent_dictionary_path": intent_dictionary_path,
-                "kiwi_dictionary_path": kiwi_dictionary_path,
             }
         )
 
@@ -72,7 +71,7 @@ class _ServiceWithFakePipeline(RAGService):
         return self.pipeline
 
 
-def test_service_builds_rule_classifier_with_separate_dictionary_paths(monkeypatch) -> None:
+def test_service_builds_rule_classifier_with_intent_dictionary_only(monkeypatch) -> None:
     _FakeRuleBasedQueryClassifier.calls = []
     monkeypatch.setattr(rag_service, "RuleBasedQueryClassifier", _FakeRuleBasedQueryClassifier)
     service = RAGService(monitor=PipelineMonitor(log_path=None))
@@ -81,7 +80,6 @@ def test_service_builds_rule_classifier_with_separate_dictionary_paths(monkeypat
     assert _FakeRuleBasedQueryClassifier.calls == [
         {
             "intent_dictionary_path": service._settings.processed_data_dir / "finance_intent_terms.json",
-            "kiwi_dictionary_path": service._settings.processed_data_dir / "kiwi_user_dict.tsv",
         }
     ]
 
@@ -215,3 +213,4 @@ def test_stream_answer_final_payload_includes_routing_metadata(monkeypatch) -> N
     assert final["routing_reason"] == "matched_greeting"
     assert final["matched_terms"] == []
     assert final["classifier"] == {"method": "rule", "confidence": 1.0}
+

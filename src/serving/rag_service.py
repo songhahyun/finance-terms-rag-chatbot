@@ -46,11 +46,7 @@ class RAGService:
 
     def _build_intent_classifier(self) -> QueryIntentClassifier:
         intent_dictionary_path = self._settings.processed_data_dir / "finance_intent_terms.json"
-        kiwi_dictionary_path = self._settings.processed_data_dir / "kiwi_user_dict.tsv"
-        rule_classifier = RuleBasedQueryClassifier(
-            intent_dictionary_path=intent_dictionary_path,
-            kiwi_dictionary_path=kiwi_dictionary_path,
-        )
+        rule_classifier = RuleBasedQueryClassifier(intent_dictionary_path=intent_dictionary_path)
         llm_classifier = None
         provider = getattr(self._settings, "intent_classifier_provider", "openai")
         if provider == "openai" and self._settings.openai_api_key:
@@ -287,3 +283,4 @@ def stream_answer(
     worker = Thread(target=_worker, daemon=True)
     worker.start()
     return queue, result_holder, error_holder
+

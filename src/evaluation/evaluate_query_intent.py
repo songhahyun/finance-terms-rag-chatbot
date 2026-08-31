@@ -23,7 +23,6 @@ from src.generation.query_intent import (
 
 DEFAULT_TESTSET_PATH = Path("data/eval/testset/classify_query_intent_v1.csv")
 DEFAULT_INTENT_DICTIONARY_PATH = Path("data/processed/finance_intent_terms.json")
-DEFAULT_KIWI_DICTIONARY_PATH = Path("data/processed/kiwi_user_dict.tsv")
 DEFAULT_OUTPUT_DIR = Path("data/eval/outputs/query_intent")
 OUTPUT_STEM = "query_intent_eval_v1"
 
@@ -184,20 +183,11 @@ def run_evaluation(
     *,
     testset_path: str | Path = DEFAULT_TESTSET_PATH,
     intent_dictionary_path: str | Path = DEFAULT_INTENT_DICTIONARY_PATH,
-    kiwi_dictionary_path: str | Path = DEFAULT_KIWI_DICTIONARY_PATH,
     output_dir: str | Path = DEFAULT_OUTPUT_DIR,
-    dictionary_path: str | Path | None = None,
 ) -> EvaluationOutputs:
     """Run rule-only query intent evaluation and save full, error, and summary outputs."""
 
-    if dictionary_path is not None:
-        intent_dictionary_path = dictionary_path
-        kiwi_dictionary_path = dictionary_path
-
-    classifier = RuleBasedQueryClassifier(
-        intent_dictionary_path=intent_dictionary_path,
-        kiwi_dictionary_path=kiwi_dictionary_path,
-    )
+    classifier = RuleBasedQueryClassifier(intent_dictionary_path=intent_dictionary_path)
     with Path(testset_path).open("r", encoding="utf-8", newline="") as file:
         reader = csv.DictReader(file)
         rows = [_evaluate_row(row, classifier) for row in reader]
@@ -229,8 +219,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Evaluate the rule-based query intent classifier")
     parser.add_argument("--testset", default=str(DEFAULT_TESTSET_PATH))
     parser.add_argument("--intent-dictionary", default=str(DEFAULT_INTENT_DICTIONARY_PATH))
-    parser.add_argument("--kiwi-dictionary", default=str(DEFAULT_KIWI_DICTIONARY_PATH))
-    parser.add_argument("--dictionary", default=None, help="Legacy option that uses one dictionary for both paths")
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     return parser
 
@@ -242,8 +230,6 @@ def main() -> None:
     outputs = run_evaluation(
         testset_path=args.testset,
         intent_dictionary_path=args.intent_dictionary,
-        kiwi_dictionary_path=args.kiwi_dictionary,
-        dictionary_path=args.dictionary,
         output_dir=args.output_dir,
     )
     print(f"full csv: {outputs.full_csv}")
@@ -253,3 +239,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
