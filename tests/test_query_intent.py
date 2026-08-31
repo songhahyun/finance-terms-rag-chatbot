@@ -58,6 +58,11 @@ def test_query_intent_result_metadata() -> None:
 def test_normalize_term_ignores_spacing_and_separators() -> None:
     assert normalize_term("가 산-금 리") == "가산금리"
     assert normalize_term("E T-F") == "etf"
+    assert normalize_term("금융안정위원회(FSB)") == "금융안정위원회fsb"
+    assert normalize_term("금융안정위원회 FSB") == "금융안정위원회fsb"
+    assert normalize_term("기업･개인간(B2C) 지급결제시스템") == "기업개인간b2c지급결제시스템"
+    assert normalize_term("기업 개인간 B2C 지급결제시스템") == "기업개인간b2c지급결제시스템"
+    assert normalize_term("노동생산성/노동생산성지수") == "노동생산성노동생산성지수"
 
 
 def test_finance_dictionary_loads_terms_once_from_path(tmp_path: Path) -> None:
@@ -489,3 +494,4 @@ def test_final_classifier_caches_repeated_queries() -> None:
 
     assert first is second
     assert rule.calls == 1
+

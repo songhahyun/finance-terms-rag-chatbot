@@ -8,7 +8,7 @@ import re
 # ---------------------------------------------------------------------------
 
 
-_NORMALIZE_PATTERN = re.compile(r"[\s\-_./]+")
+_NORMALIZE_PATTERN = re.compile(r"[\s\-_./()（）·･ㆍ]+")
 _ASCII_ALNUM_PATTERN = re.compile(r"[a-z0-9]")
 
 
@@ -21,3 +21,4 @@ def _allows_short_substring_match(normalized_term: str) -> bool:
     """Return whether a normalized term can be matched as a short substring."""
 
     return bool(_ASCII_ALNUM_PATTERN.search(normalized_term))
+
