@@ -294,6 +294,76 @@ def test_rule_classifier_json_alias_matches_to_canonical_terms(tmp_path: Path) -
 
 
 @pytest.mark.parametrize(
+    ("query", "expected_terms"),
+    [
+        ("금융안정위원회가 뭐야?", ["금융안정위원회(FSB)"]),
+        ("FSB가 뭐야?", ["금융안정위원회(FSB)"]),
+        ("금융안정위원회 FSB 설명해줘", ["금융안정위원회(FSB)"]),
+        ("기업 개인간 B2C 지급결제시스템 설명해줘", ["기업･개인간(B2C) 지급결제시스템"]),
+        ("노동생산성 노동생산성지수 알려줘", ["노동생산성/노동생산성지수"]),
+    ],
+)
+def test_rule_classifier_matches_punctuation_normalized_canonical_variants(
+    tmp_path: Path,
+    query: str,
+    expected_terms: list[str],
+) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(
+        path,
+        [
+            {"term": "금융안정위원회(FSB)", "aliases": ["금융안정위원회", "FSB"]},
+            {"term": "기업･개인간(B2C) 지급결제시스템", "aliases": []},
+            {"term": "노동생산성/노동생산성지수", "aliases": []},
+        ],
+    )
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify(query)
+
+    assert result.intent == QueryIntent.NEEDS_RAG
+    assert result.matched_terms == expected_terms
+
+
+def test_rule_classifier_does_not_match_standalone_b2c(tmp_path: Path) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "기업･개인간(B2C) 지급결제시스템", "aliases": []}])
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify("B2C가 뭐야?")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.matched_terms == []
+
+
+@pytest.mark.parametrize("query", ["금융시스템 설명해줘", "상호연계성이 뭐야?"])
+def test_rule_classifier_partial_canonical_words_do_not_route_without_alias(
+    tmp_path: Path,
+    query: str,
+) -> None:
+    path = tmp_path / "finance_intent_terms.json"
+    _write_intent_dictionary(path, [{"term": "금융시스템 상호연계성", "aliases": []}])
+    classifier = RuleBasedQueryClassifier(path)
+
+    result = classifier.classify(query)
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.matched_terms == []
+
+
+def test_rule_classifier_ignores_terms_only_present_in_kiwi_dictionary(tmp_path: Path) -> None:
+    intent_path = tmp_path / "finance_intent_terms.json"
+    kiwi_path = tmp_path / "kiwi_user_dict.tsv"
+    _write_intent_dictionary(intent_path, [{"term": "가산금리", "aliases": []}])
+    kiwi_path.write_text("키위전용용어\tNNP\n", encoding="utf-8")
+    classifier = RuleBasedQueryClassifier(intent_dictionary_path=intent_path)
+
+    result = classifier.classify("키위전용용어 알려줘")
+
+    assert result.intent == QueryIntent.CLARIFY
+    assert result.matched_terms == []
+
+@pytest.mark.parametrize(
     ("query", "expected_term"),
     [
         ("ETF가 뭐야?", "상장지수펀드(ETF)"),
