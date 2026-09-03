@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 
 class HybridRetriever:
@@ -15,8 +16,15 @@ class HybridRetriever:
     def invoke(self, query: str):
         """Retrieve documents from both backends and merge the rankings.
         Return the top results after reciprocal rank fusion."""
-        bm25_docs = self.retrieve_bm25(query)
-        dense_docs = self.retrieve_dense(query)
+        # Both retrievers are synchronous and independent. Run them concurrently
+        # so hybrid latency is bounded by the slower backend rather than their sum.
+        # A request-scoped executor keeps lifecycle management simple and avoids
+        # changing the public synchronous Retriever interface used by the service.
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="hybrid-retrieval") as executor:
+            bm25_future = executor.submit(self.retrieve_bm25, query)
+            dense_future = executor.submit(self.retrieve_dense, query)
+            bm25_docs = bm25_future.result()
+            dense_docs = dense_future.result()
         return self.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs)
 
     def retrieve_bm25(self, query: str):

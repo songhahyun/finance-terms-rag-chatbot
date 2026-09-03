@@ -38,6 +38,9 @@ jobs:
       - name: Compile backend and source modules
         run: python -m compileall backend src
 
+      - name: Test hybrid retriever concurrency
+        run: python -m unittest tests/test_hybrid_retriever.py
+
   frontend:
     name: Frontend Build
     runs-on: ubuntu-latest
