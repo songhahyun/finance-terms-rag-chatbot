@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 
 
 class HybridRetriever:
@@ -16,15 +16,16 @@ class HybridRetriever:
     def invoke(self, query: str):
         """Retrieve documents from both backends and merge the rankings.
         Return the top results after reciprocal rank fusion."""
-        # Both retrievers are synchronous and independent. Run them concurrently
-        # so hybrid latency is bounded by the slower backend rather than their sum.
-        # A request-scoped executor keeps lifecycle management simple and avoids
-        # changing the public synchronous Retriever interface used by the service.
-        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="hybrid-retrieval") as executor:
-            bm25_future = executor.submit(self.retrieve_bm25, query)
-            dense_future = executor.submit(self.retrieve_dense, query)
-            bm25_docs = bm25_future.result()
-            dense_docs = dense_future.result()
+        bm25_docs = self.retrieve_bm25(query)
+        dense_docs = self.retrieve_dense(query)
+        return self.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs)
+
+    async def ainvoke(self, query: str):
+        """Retrieve dense and sparse candidates concurrently via async APIs."""
+        bm25_docs, dense_docs = await asyncio.gather(
+            self.aretrieve_bm25(query),
+            self.aretrieve_dense(query),
+        )
         return self.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs)
 
     def retrieve_bm25(self, query: str):
@@ -34,6 +35,14 @@ class HybridRetriever:
     def retrieve_dense(self, query: str):
         """Retrieve dense vector candidates."""
         return self.dense_retriever.invoke(query)
+
+    async def aretrieve_bm25(self, query: str):
+        """Retrieve sparse BM25 candidates through its async interface."""
+        return await self.bm25_retriever.ainvoke(query)
+
+    async def aretrieve_dense(self, query: str):
+        """Retrieve dense vector candidates through its async interface."""
+        return await self.dense_retriever.ainvoke(query)
 
     def fuse(self, *, dense_docs: list, bm25_docs: list):
         """Fuse dense and BM25 candidates and return the top configured results."""

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from time import perf_counter
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 from uuid import uuid4
 
 CALL_BASED_STAGES = {
@@ -184,6 +184,60 @@ class QueryTrace:
                 chars_per_sec=extra.get("chars_per_sec"),
                 token_count_source=extra.get("token_count_source"),
                 raw_usage=extra.get("raw_usage"),
+            )
+            with self._lock:
+                self.stage_metrics.append(metric)
+            if self._on_stage_metric is not None:
+                try:
+                    self._on_stage_metric(self.trace_id, metric)
+                except Exception:  # noqa: BLE001
+                    pass
+
+    async def run_retrieval_stage_async(
+        self,
+        stage: str,
+        fn: Callable[[], Awaitable[Any]],
+        *,
+        result_count_fn: Callable[[Any], int] | None = None,
+    ) -> Any:
+        """Execute and record one asynchronous retrieval stage."""
+        started_ts = datetime.now(timezone.utc).isoformat()
+        t0 = perf_counter()
+        success = False
+        error: str | None = None
+        result: Any = None
+        try:
+            result = await fn()
+            success = True
+            return result
+        except Exception as exc:  # noqa: BLE001
+            error = f"{type(exc).__name__}: {exc}"
+            raise
+        finally:
+            elapsed = max(perf_counter() - t0, 1e-9)
+            ended_ts = datetime.now(timezone.utc).isoformat()
+            result_count = PipelineMonitor._result_count(result, result_count_fn) if success else 0
+            status = "success" if success else "error"
+            if success and result_count == 0:
+                status = "zero_result"
+            metric = StageMetric(
+                stage=stage,
+                success=success,
+                elapsed_sec=elapsed,
+                throughput=(1.0 / elapsed) if success else 0.0,
+                throughput_unit="calls/sec",
+                work_units=1.0 if success else 0.0,
+                started_at=started_ts,
+                ended_at=ended_ts,
+                error=error,
+                stage_type="call_based",
+                status=status,
+                attempted_count=1,
+                success_count=1 if success else 0,
+                fail_count=0 if success else 1,
+                result_count=result_count,
+                attempted_calls_per_sec=1.0 / elapsed,
+                successful_calls_per_sec=(1.0 / elapsed) if success else 0.0,
             )
             with self._lock:
                 self.stage_metrics.append(metric)

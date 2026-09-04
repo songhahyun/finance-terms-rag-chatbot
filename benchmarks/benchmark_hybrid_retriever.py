@@ -6,6 +6,7 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 from pathlib import Path
 import statistics
@@ -31,16 +32,16 @@ class DelayedRetriever:
         self.delay_seconds = delay_seconds
         self.document = FakeDocument(page_content=chunk_id, metadata={"chunk_id": chunk_id})
 
-    def invoke(self, query: str) -> list[FakeDocument]:
-        time.sleep(self.delay_seconds)
+    async def ainvoke(self, query: str) -> list[FakeDocument]:
+        await asyncio.sleep(self.delay_seconds)
         return [self.document]
 
 
-def measure(retriever: HybridRetriever, runs: int = 10) -> list[float]:
+async def measure(retriever: HybridRetriever, runs: int = 10) -> list[float]:
     durations = []
     for _ in range(runs):
         started = time.perf_counter()
-        retriever.invoke("기준금리")
+        await retriever.ainvoke("기준금리")
         durations.append(time.perf_counter() - started)
     return durations
 
@@ -48,13 +49,13 @@ def measure(retriever: HybridRetriever, runs: int = 10) -> list[float]:
 if __name__ == "__main__":
     dense_delay = 0.08
     bm25_delay = 0.05
-    samples = measure(
+    samples = asyncio.run(measure(
         HybridRetriever(
             DelayedRetriever(dense_delay, "dense"),
             DelayedRetriever(bm25_delay, "bm25"),
             k=2,
         )
-    )
+    ))
     median = statistics.median(samples)
     sequential_baseline = dense_delay + bm25_delay
     print(f"runs={len(samples)}")

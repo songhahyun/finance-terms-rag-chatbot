@@ -8,19 +8,19 @@ from fastapi.responses import StreamingResponse
 from backend.app.auth.deps import get_current_user
 from backend.app.schemas.auth import AuthenticatedUser
 from backend.app.schemas.chat import ChatRequest, ChatResponse
-from src.serving.rag_service import answer_query, stream_answer
+from src.serving.rag_service import answer_query_async, stream_answer
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 @router.post("", response_model=ChatResponse)
-def chat(
+async def chat(
     request: ChatRequest,
     user: AuthenticatedUser = Depends(get_current_user),
 ) -> ChatResponse:
-    """Handle a synchronous chat request through the RAG service.
+    """Handle an asynchronous chat request through the RAG service.
     Return the serialized answer and source metadata."""
-    result = answer_query(
+    result = await answer_query_async(
         request.question,
         mode=request.mode,
         k=request.k,
