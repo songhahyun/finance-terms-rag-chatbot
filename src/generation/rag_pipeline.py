@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -264,6 +265,100 @@ class RAGPipeline:
                 result_count_fn=len,
             )
         return self.retriever.invoke(query)
+
+    async def _aretrieve(self, query: str, trace=None):
+        """Run retrieval through async interfaces and preserve stage metrics."""
+        if all(
+            hasattr(self.retriever, name)
+            for name in ("aretrieve_bm25", "aretrieve_dense", "fuse")
+        ):
+            if trace is None:
+                return await self.retriever.ainvoke(query)
+            bm25_docs, dense_docs = await asyncio.gather(
+                trace.run_retrieval_stage_async(
+                    "stage_1_retrieval_bm25",
+                    lambda: self.retriever.aretrieve_bm25(query),
+                    result_count_fn=len,
+                ),
+                trace.run_retrieval_stage_async(
+                    "stage_1_retrieval_dense",
+                    lambda: self.retriever.aretrieve_dense(query),
+                    result_count_fn=len,
+                ),
+            )
+            return trace.run_stage(
+                "stage_1_retrieval_fusion",
+                lambda: self.retriever.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs),
+                result_count_fn=len,
+            )
+
+        ainvoke = getattr(self.retriever, "ainvoke", None)
+        if callable(ainvoke):
+            if trace is None:
+                return await ainvoke(query)
+            return await trace.run_retrieval_stage_async(
+                "stage_1_retrieval_fusion",
+                lambda: ainvoke(query),
+                result_count_fn=len,
+            )
+        if trace is None:
+            return await asyncio.to_thread(self.retriever.invoke, query)
+        return await trace.run_retrieval_stage_async(
+            "stage_1_retrieval_fusion",
+            lambda: asyncio.to_thread(self.retriever.invoke, query),
+            result_count_fn=len,
+        )
+
+    async def aanswer(
+        self,
+        query: str,
+        language: str | None = None,
+        *,
+        on_chunk: Callable[[str], None] | None = None,
+        trace=None,
+    ) -> dict:
+        """Answer through async retrieval without blocking the caller's event loop."""
+        if self.generator is None:
+            raise ValueError("`generator` is required.")
+
+        if self.monitor is not None:
+            trace = trace or self.monitor.start_trace(
+                query=query,
+                metadata={"mode": "single_generator"},
+            )
+
+        docs = await self._aretrieve(query, trace=trace)
+        context = build_context(docs)
+        answer_prompt = self._build_answer_prompt(query, context, language=language)
+
+        if trace is not None:
+            generation_result = await asyncio.to_thread(
+                trace.run_stage,
+                "stage_2_generation",
+                lambda: self._generate_validated_answer_result(answer_prompt, on_chunk=on_chunk),
+                throughput_unit="chars/sec",
+                throughput_fn=lambda out: len(str(out.get("answer", ""))),
+                metric_extra_fn=lambda out, elapsed: self._generation_metric_extra(answer_prompt, out, elapsed),
+                timeout_sec=self.monitor_stage3_timeout_sec,
+            )
+        else:
+            generation_result = await asyncio.to_thread(
+                self._generate_validated_answer_result,
+                answer_prompt,
+                on_chunk=on_chunk,
+            )
+
+        result = {
+            "query": query,
+            "answer": generation_result["answer"],
+            "language_validation": generation_result["language_validation"],
+            "regeneration_count": generation_result["language_validation"]["regeneration_count"],
+            "retrieved_ids": [doc.metadata.get("chunk_id") for doc in docs],
+            "contexts": docs,
+        }
+        if trace is not None:
+            result["monitoring"] = trace.to_dict()
+        return result
 
     def answer(
         self,

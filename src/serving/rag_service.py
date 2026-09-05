@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from queue import Queue
 from threading import Lock, Thread
@@ -167,6 +168,43 @@ class RAGService:
         response.update(classification.routing_metadata())
         return response
 
+    async def aanswer(
+        self,
+        request: RAGRequest,
+        *,
+        on_chunk: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
+        """Answer a request through the async retrieval path."""
+        trace = self._monitor.start_trace(
+            query=request.question,
+            metadata={"mode": request.mode, "k": request.k, "language": request.language},
+        )
+        classification = await asyncio.to_thread(
+            trace.run_stage,
+            "stage_0_intent_classification",
+            lambda: self._classify_with_trace_metadata(request.question, trace),
+            throughput_unit="queries/sec",
+        )
+        if classification.intent != QueryIntent.NEEDS_RAG:
+            return await asyncio.to_thread(
+                self._answer_without_rag,
+                request.question,
+                classification,
+                trace=trace,
+                on_chunk=on_chunk,
+            )
+
+        pipeline = await asyncio.to_thread(self.get_pipeline, request.mode, request.k)
+        result = await pipeline.aanswer(
+            request.question,
+            language=request.language,
+            on_chunk=on_chunk,
+            trace=trace,
+        )
+        response = self._serialize_result(request.question, result)
+        response.update(classification.routing_metadata())
+        return response
+
     def _classify_with_trace_metadata(self, question: str, trace: Any) -> QueryIntentResult:
         classification = self._intent_classifier.classify(question)
         trace.metadata.update(self._trace_metadata_from_classification(classification))
@@ -256,6 +294,19 @@ def answer_query(
     return get_rag_service().answer(request, on_chunk=on_chunk)
 
 
+async def answer_query_async(
+    question: str,
+    *,
+    mode: str = "hybrid",
+    k: int = 5,
+    language: str = "ko",
+    on_chunk: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Answer a query through the service's async path."""
+    request = RAGRequest(question=question, mode=mode, k=k, language=language)
+    return await get_rag_service().aanswer(request, on_chunk=on_chunk)
+
+
 def stream_answer(
     question: str,
     *,
@@ -272,12 +323,14 @@ def stream_answer(
 
     def _worker() -> None:
         try:
-            result_holder["result"] = answer_query(
-                question,
-                mode=mode,
-                k=k,
-                language=language,
-                on_chunk=_on_chunk,
+            result_holder["result"] = asyncio.run(
+                answer_query_async(
+                    question,
+                    mode=mode,
+                    k=k,
+                    language=language,
+                    on_chunk=_on_chunk,
+                )
             )
         except Exception as exc:  # noqa: BLE001
             error_holder["error"] = f"{type(exc).__name__}: {exc}"

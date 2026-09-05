@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 
 
@@ -19,6 +20,14 @@ class HybridRetriever:
         dense_docs = self.retrieve_dense(query)
         return self.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs)
 
+    async def ainvoke(self, query: str):
+        """Retrieve dense and sparse candidates concurrently via async APIs."""
+        bm25_docs, dense_docs = await asyncio.gather(
+            self.aretrieve_bm25(query),
+            self.aretrieve_dense(query),
+        )
+        return self.fuse(dense_docs=dense_docs, bm25_docs=bm25_docs)
+
     def retrieve_bm25(self, query: str):
         """Retrieve sparse BM25 candidates."""
         return self.bm25_retriever.invoke(query)
@@ -26,6 +35,14 @@ class HybridRetriever:
     def retrieve_dense(self, query: str):
         """Retrieve dense vector candidates."""
         return self.dense_retriever.invoke(query)
+
+    async def aretrieve_bm25(self, query: str):
+        """Retrieve sparse BM25 candidates through its async interface."""
+        return await self.bm25_retriever.ainvoke(query)
+
+    async def aretrieve_dense(self, query: str):
+        """Retrieve dense vector candidates through its async interface."""
+        return await self.dense_retriever.ainvoke(query)
 
     def fuse(self, *, dense_docs: list, bm25_docs: list):
         """Fuse dense and BM25 candidates and return the top configured results."""
